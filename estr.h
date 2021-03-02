@@ -55,4 +55,13 @@ char* _estrcat(const char* str, ...);
  */
 char* estr_url_encode(const char* str);
 
+/**
+ * @brief Replace string with another string. Result needs to be freed
+ * @param orig Original string
+ * @param rep Part of the string which needs to be replaced
+ * @param with Replacement for rep
+ * @return Pointer to result or NULL on failure
+ */
+char* estrrep(const char* orig, const char* rep, const char* with);
+
 #endif

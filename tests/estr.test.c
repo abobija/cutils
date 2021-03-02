@@ -81,53 +81,53 @@ static void test_estrsplit() {
     assert(strlen(_pcs[0]) == 1 && strlen(_pcs[1]) == 1 && strlen(_pcs[2]) == 1 && 
         estreq(_pcs[0], "a") && estreq(_pcs[1], "b") && estreq(_pcs[2], "c")
     );
-    cufree_list(_pcs, _len);
+    culist_free(_pcs, _len);
 
     _pcs = estrsplit(",,d", ',', &_len);
     assert(_len == 1);
     assert(strlen(_pcs[0]) == 1 && estreq(_pcs[0], "d"));
-    cufree_list(_pcs, _len);
+    culist_free(_pcs, _len);
 
     _pcs = estrsplit("a,,bc,d,,", ',', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 1 && strlen(_pcs[1]) == 2 && strlen(_pcs[2]) == 1 && 
         estreq(_pcs[0], "a") && estreq(_pcs[1], "bc") && estreq(_pcs[2], "d")
     );
-    cufree_list(_pcs, _len);
+    culist_free(_pcs, _len);
 
     _pcs = estrsplit("da", ',', &_len);
     assert(_len == 1 && estreq(_pcs[0], "da"));
-    cufree_list(_pcs, _len);
+    culist_free(_pcs, _len);
 
     _pcs = estrsplit("d,", ',', &_len);
     assert(_len == 1);
     assert(strlen(_pcs[0]) == 1 && estreq(_pcs[0], "d"));
-    cufree_list(_pcs, _len);
+    culist_free(_pcs, _len);
 
     _pcs = estrsplit("jan.feb.mar", '.', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 3 && strlen(_pcs[1]) == 3 && strlen(_pcs[2]) == 3 && 
         estreq(_pcs[0], "jan") && estreq(_pcs[1], "feb") && estreq(_pcs[2], "mar")
     );
-    cufree_list(_pcs, _len);
+    culist_free(_pcs, _len);
 
     _pcs = estrsplit("..jan..feb..mar..", '.', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 3 && strlen(_pcs[1]) == 3 && strlen(_pcs[2]) == 3 && 
         estreq(_pcs[0], "jan") && estreq(_pcs[1], "feb") && estreq(_pcs[2], "mar")
     );
-    cufree_list(_pcs, _len);
+    culist_free(_pcs, _len);
 
     _pcs = estrsplit("......", '.', &_len);
     assert(_len == 0 && !_pcs);
-    cufree_list(_pcs, _len);
+    culist_free(_pcs, _len);
 
     _pcs = estrsplit("     a     bc  d    ", ' ', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 1 && strlen(_pcs[1]) == 2 && strlen(_pcs[2]) == 1 && 
         estreq(_pcs[0], "a") && estreq(_pcs[1], "bc") && estreq(_pcs[2], "d")
     );
-    cufree_list(_pcs, _len);
+    culist_free(_pcs, _len);
 }
 
 static void test_estrcat() {
@@ -154,6 +154,25 @@ static void test_estr_url_encode() {
     free(res);
 }
 
+static void test_estrrep() {
+    char* tmp;
+    tmp = estrrep("aaabbbccc", "bbb", "ddd");
+    assert(estreq(tmp, "aaadddccc"));
+    free(tmp);
+    tmp = estrrep("aaa\\\"x\\\"d", "\\\"", "\""); // aaa\"x\"d -> aaa"x"d
+    assert(estreq(tmp, "aaa\"x\"d"));
+    free(tmp);
+    tmp = estrrep("abc", "d", "x");
+    assert(estreq(tmp, "abc"));
+    free(tmp);
+    tmp = estrrep(NULL, "b", "x");
+    assert(!tmp);
+    tmp = estrrep("abc", NULL, "x");
+    assert(!tmp);
+    tmp = estrrep("abc", "b", NULL);
+    assert(!tmp);
+}
+
 int main() {
     test_estreq();
     test_estrneq();
@@ -163,6 +182,7 @@ int main() {
     test_estrsplit();
     test_estrcat();
     test_estr_url_encode();
+    test_estrrep();
 
     return 0;
 }

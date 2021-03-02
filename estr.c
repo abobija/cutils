@@ -125,7 +125,7 @@ char** estrsplit(const char* str, const char chr, size_t* out_len) {
             size_t piece_len = (offset_one ? ptr + 1 : ptr) - start;
             result[i] = malloc(piece_len + 1);
             if(!result[i]) {
-                cufree_list(result, i + 1);
+                culist_free(result, i + 1);
                 *out_len = 0;
                 return NULL;
             }
@@ -210,4 +210,52 @@ char* estr_url_encode(const char* str) {
     *pbuf = '\0';
 
     return buf;
+}
+
+char* estrrep(const char *orig, const char *rep, const char *with) {
+    // Taken from: https://stackoverflow.com/a/779960
+    // It's a little bit modified
+
+    if (!orig || !rep || !with)
+        return NULL;
+    
+    char *result;  // the return string
+    char *ins;     // the next insert point
+    char *tmp;     // varies
+    int len_rep;   // length of rep (the string to remove)
+    int len_with;  // length of with (the string to replace rep with)
+    int len_front; // distance between rep and end of last rep
+    int count;     // number of replacements
+    
+    len_rep = strlen(rep);
+    if (len_rep == 0)
+        return NULL; // empty rep causes infinite loop during count
+    
+    len_with = strlen(with);
+
+    // count the number of replacements needed
+    ins = (char*) orig;
+    for (count = 0; tmp = strstr(ins, rep); ++count) {
+        ins = tmp + len_rep;
+    }
+
+    tmp = result = malloc(strlen(orig) + (len_with - len_rep) * count + 1);
+
+    if (!result)
+        return NULL;
+
+    // first time through the loop, all the variable are set correctly
+    // from here on,
+    //    tmp points to the end of the result string
+    //    ins points to the next occurrence of rep in orig
+    //    orig points to the remainder of orig after "end of rep"
+    while (count--) {
+        ins = strstr(orig, rep);
+        len_front = ins - orig;
+        tmp = strncpy(tmp, orig, len_front) + len_front;
+        tmp = strcpy(tmp, with) + len_with;
+        orig += len_front + len_rep; // move to next "end of rep"
+    }
+    strcpy(tmp, orig);
+    return result;
 }

@@ -25,16 +25,16 @@
  * @param item_free_fnc Function for freeing the list item
  * @return void
  */
-#define cufree_list_(list, len, item_free_fnc) \
+#define culist_free_(list, len, item_free_fnc) \
     ({ for(size_t i = 0; i < len; i++) { item_free_fnc(list[i]); list[i] = NULL; } free(list); list = NULL; })
 
 /**
  * @brief Free the list (array of pointers). For the freeing the list items free() will be used.
- *        If you want to use custom function for freeing list items, please use cufree_list_ instead.
+ *        If you want to use custom function for freeing list items, please use culist_free_ instead.
  * @param list Double pointer to list
  * @param len Number of the items in the list
  * @return void
  */
-#define cufree_list(list, len) cufree_list_(list, len, free)
+#define culist_free(list, len) culist_free_(list, len, free)
 
 #endif

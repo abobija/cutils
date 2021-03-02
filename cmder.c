@@ -67,6 +67,94 @@ char* cmder_getoopts(cmder_cmd_handle_t cmd) {
     return getoopts;
 }
 
+#define cmder_argv_iteration(CODE) { \
+    if(*curr == '"' && (! (quote_escaped = (prev && *prev == '\\')))) quoted = !quoted; \
+    else if(!start && (quoted || *curr != ' ')) { \
+        start = curr; \
+    } else if(start && !quoted && *curr == ' ') { \
+        { CODE }; \
+        start = NULL; \
+    } \
+    prev = curr++; \
+}
+
+#define cmder_argv_post_iteration_pickup(CODE) {\
+    if(start) { \
+        { CODE }; \
+        start = NULL; \
+    } \
+}
+
+#define cmder_argv_iteration_handler() { \
+    end = *prev == '"' && !quote_escaped ? prev : curr; \
+    argv[i] = strndup(start, end - start); \
+    if(strstr(argv[i], "\\\"")) { \
+        char* tmp = estrrep(argv[i], "\\\"", "\""); \
+        if(tmp) { \
+            free(argv[i]); \
+            argv[i] = tmp; \
+        } \
+    } \
+    i++; \
+}
+
+char** cmder_argv(const char* cmdline, int* argc) {
+    if(!argc)
+        return NULL;
+    
+    if(!cmdline) {
+        *argc = 0;
+        return NULL;
+    }
+
+    size_t cmdline_len = strlen(cmdline);
+
+    if(cmdline_len <= 0) {
+        *argc = 0;
+        return NULL;
+    }
+
+    char* curr = (char*) cmdline;
+    char* prev = NULL;
+    char* start = NULL;
+    bool quoted = false;
+    bool quote_escaped = false;
+    int len = 0;
+
+    while(*curr) cmder_argv_iteration({ len++; });
+
+    if(quoted) { // last quote not closed
+        *argc = 0;
+        return NULL;
+    }
+
+    cmder_argv_post_iteration_pickup({ len++; });
+
+    if(len <= 0 || quoted) {
+        *argc = 0;
+        return NULL;
+    }
+
+    curr = (char*) cmdline;
+    prev = start = NULL;
+    quoted = quote_escaped = false;
+    char* end = NULL;
+    int i = 0;
+
+    char** argv = calloc(len, len * sizeof(char*));
+
+    while(*curr) cmder_argv_iteration({
+        cmder_argv_iteration_handler();
+    });
+
+    cmder_argv_post_iteration_pickup({
+        cmder_argv_iteration_handler();
+    });
+    
+    *argc = len;
+    return argv;
+}
+
 static int getoopts_recalc(cmder_cmd_handle_t cmd) {
     char* getoopts = cmder_getoopts(cmd);
 
@@ -190,7 +278,7 @@ static void optval_free(cmder_opt_val_t* optval) {
 static void cmdval_free(cmder_cmd_val_t* cmdval) {
     cmdval->cmder = NULL;
     cmdval->context = NULL;
-    cufree_list_(cmdval->opts, cmdval->opts_len, optval_free);
+    culist_free_(cmdval->opts, cmdval->opts_len, optval_free);
     free(cmdval);
 }
 
@@ -225,8 +313,8 @@ int cmder_run(cmder_handle_t cmder, const char* cmdline) {
     if(!estrneq(cmdline, cmder->name, cmder_name_len)) // not for us
         return -2;
 
-    size_t argc;
-    char** argv = estrsplit(cmdline + cmder_name_len, ' ', &argc);
+    int argc;
+    char** argv = cmder_argv(cmdline + cmder_name_len, &argc);
 
     if(argc <= 0) // nothing to do
         return -1;
@@ -304,7 +392,7 @@ int cmder_run(cmder_handle_t cmder, const char* cmdline) {
     }
 
     cmdval_free(cmdval);
-    cufree_list(argv, argc);
+    culist_free(argv, argc);
 
     return err;
 }
@@ -322,7 +410,7 @@ static void cmd_free(cmder_cmd_handle_t cmd) {
     cmd->name = NULL;
     free(cmd->getoopts);
     cmd->getoopts = NULL;
-    cufree_list_(cmd->opts, cmd->opts_len, opt_free);
+    culist_free_(cmd->opts, cmd->opts_len, opt_free);
     free(cmd);
 }
 
@@ -330,7 +418,7 @@ void cmder_destroy(cmder_handle_t cmder) {
     if(!cmder)
         return;
 
-    cufree_list_(cmder->cmds, cmder->cmds_len, cmd_free);
+    culist_free_(cmder->cmds, cmder->cmds_len, cmd_free);
     free(cmder->name);
     cmder->name = NULL;
     free(cmder);

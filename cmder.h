@@ -48,6 +48,7 @@ typedef struct {
 
 cmder_handle_t cmder_create(cmder_t* config);
 char* cmder_getoopts(cmder_cmd_handle_t cmd);
+char** cmder_argv(const char* cmdline, int* argc);
 cmder_cmd_handle_t cmder_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd);
 int cmder_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt);
 int cmder_run(cmder_handle_t cmder, const char* cmdline);
