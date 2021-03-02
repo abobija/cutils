@@ -2,7 +2,7 @@
 #include "../cutils.h"
 #include <assert.h>
 
-static void test_custreq() {
+static void test_estreq() {
     assert( estreq("a", "a"));
     assert( estreq(" ", " "));
     assert( estreq("", ""));
@@ -12,7 +12,7 @@ static void test_custreq() {
     assert(!estreq(NULL, NULL));
 }
 
-static void test_custrneq() {
+static void test_estrneq() {
     assert( estrneq("a", "a", 1));
     assert( estrneq("a", "ab", 1));
     assert( estrneq(" ", " ",1));
@@ -24,7 +24,7 @@ static void test_custrneq() {
     assert(!estrneq(NULL, NULL, 0));
 }
 
-static void test_custrsw() {
+static void test_estrsw() {
     assert( estrsw("+react", "+react"));
 	assert( estrsw("+react to this", "+react"));
 	assert(!estrsw("+react", "+react to this"));
@@ -54,7 +54,7 @@ static void test_custrew() {
 	assert(!estrew("  ", "+react"));
 }
 
-static void test_custrn_is_digit_only() {
+static void test_estrn_is_digit_only() {
     assert( estrn_is_digit_only("123", 3));
     assert( estrn_is_digit_only("", 0));
     assert( estrn_is_digit_only("1", 1));
@@ -66,13 +66,13 @@ static void test_custrn_is_digit_only() {
     assert( estrn_is_digit_only("", 3));
 }
 
-static void test_custrn_chrcnt() {
+static void test_estrn_chrcnt() {
     assert(estrn_chrcnt(".34.f.s.", '.', 8) == 4);
     assert(estrn_chrcnt(".34.f.s.", '.', 3) == 1);
     assert(estrn_chrcnt(".34.f.s.", '.', 5) == 2);
 }
 
-static void test_custrsplit() {
+static void test_estrsplit() {
     char** _pcs;
     size_t _len;
 
@@ -130,13 +130,35 @@ static void test_custrsplit() {
     cufree_list(_pcs, _len);
 }
 
+static void test_estrcat() {
+    char* res;
+    
+    res = estrcat("a", "b", "c");
+    assert(estreq(res, "abc"));
+    free(res);
+
+    res = estrcat("", "b", " ");
+    assert(estreq(res, "b "));
+    free(res);
+}
+
+static void test_estr_url_encode() {
+    char* res;
+
+    res = estr_url_encode("👍");
+    assert(estreq(res, "%f0%9f%91%8d"));
+    free(res);
+}
+
 int main() {
-    test_custreq();
-    test_custrneq();
-    test_custrsw();
-    test_custrn_is_digit_only();
-    test_custrn_chrcnt();
-    test_custrsplit();
+    test_estreq();
+    test_estrneq();
+    test_estrsw();
+    test_estrn_is_digit_only();
+    test_estrn_chrcnt();
+    test_estrsplit();
+    test_estrcat();
+    test_estr_url_encode();
 
     return 0;
 }

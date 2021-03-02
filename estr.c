@@ -1,6 +1,8 @@
 #include "estr.h"
 #include "cutils.h"
 #include <string.h>
+#include <stdarg.h>
+#include <ctype.h>
 
 bool estreq(const char* str1, const char* str2) {
     if(!str1 || !str2)
@@ -137,4 +139,75 @@ char** estrsplit(const char* str, const char chr, size_t* out_len) {
     }
 
     return result;
+}
+
+char* _estrcat(const char* str, ...) {
+    const char* first = str;
+    size_t length = 0;
+    va_list count;
+    va_list copy;
+
+    va_start(count, str);
+    va_copy(copy, count);
+    while(str) {
+        length += strlen(str);
+        str = va_arg(count, const char*);
+    }
+    va_end(count);
+
+    if(length <= 0) {
+        va_end(copy);
+        return NULL;
+    }
+    
+    char* res = malloc(length + 1);
+
+    if(!res) {
+        va_end(copy);
+        return NULL;
+    }
+
+    size_t offset = 0;
+    str = first;
+
+    while(str) {
+        size_t _len = strlen(str);
+
+        if(_len > 0) {
+            memcpy(res + offset, str, _len);
+            offset += _len;
+        }
+
+        str = va_arg(copy, const char*);
+    }
+    va_end(copy);
+    
+    res[length] = '\0';
+
+    return res;
+}
+
+char* estr_url_encode(const char* str) {
+    if(!str) { return NULL; }
+    static char hex[] = "0123456789abcdef";
+    size_t _len = strlen(str);
+    char* buf = malloc(_len * 3 + 1); // optimize?
+    if(!buf) { return NULL; }
+    char* pbuf = buf;
+
+    for(size_t i = 0; i < _len; i++) {
+        if (isalnum(str[i]) || strchr(".-_~", str[i])) {
+            *pbuf++ = str[i];
+        } else if (str[i] == ' ') {
+            *pbuf++ = '+';
+        } else {
+            *pbuf++ = '%';
+            *pbuf++ = hex[(str[i] >> 4) & 15];
+            *pbuf++ = hex[str[i] & 15];
+        }
+    }
+
+    *pbuf = '\0';
+
+    return buf;
 }
