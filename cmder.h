@@ -17,6 +17,7 @@
 #define CU_ERR_CMDER_OPT_ARG_MISSING     (CU_ERR_CMDER_BASE + 7)
 #define CU_ERR_CMDER_UNKNOWN_OPTION      (CU_ERR_CMDER_BASE + 8)
 #define CU_ERR_CMDER_ARGS_NOT_SET        (CU_ERR_CMDER_BASE + 9)
+#define CU_ERR_CMDER_CMD_EXIST           (CU_ERR_CMDER_BASE + 10)
 
 struct cmder_handle;
 struct cmder_cmd_handle;
@@ -61,7 +62,7 @@ typedef struct {
 cmder_handle_t cmder_create(cmder_t* config);
 char* cmder_getoopts(cmder_cmd_handle_t cmd);
 char** cmder_argv(const char* cmdline, int* argc);
-cmder_cmd_handle_t cmder_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd);
+cu_err_t cmder_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_t* out_cmd);
 cu_err_t cmder_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt);
 cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline);
 cmder_opt_val_t* cmder_opt_val(char optname, cmder_cmd_val_t* cmdval);

@@ -184,15 +184,15 @@ static cmder_cmd_handle_t get_cmd_by_name(cmder_handle_t cmder, const char* cmd_
     return NULL;
 }
 
-cmder_cmd_handle_t cmder_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd) {
+cu_err_t cmder_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_t* out_cmd) {
     if(!cmder || !cmd)
-        return NULL;
+        return CU_ERR_INVALID_ARG;
 
     if(!cmd->callback) // no callback, no need to register cmd
-        return NULL;
+        return CU_ERR_INVALID_ARG;
 
     if(get_cmd_by_name(cmder, cmd->name)) // already exist
-        return NULL;
+        return CU_ERR_CMDER_CMD_EXIST;
     
     cmder_cmd_handle_t _cmd = cuctor2(cmder_cmd_handle_t, struct cmder_cmd_handle,
         .cmder = cmder,
@@ -209,7 +209,10 @@ cmder_cmd_handle_t cmder_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd) {
     cmder->cmds = cmds;
     cmder->cmds[cmder->cmds_len - 1] = _cmd;
 
-    return _cmd;
+    if(out_cmd)
+        *out_cmd = _cmd;
+
+    return CU_OK;
 }
 
 static cmder_opt_handle_t get_opt_by_name(cmder_cmd_handle_t cmd, char name) {

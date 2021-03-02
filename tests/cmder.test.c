@@ -62,12 +62,14 @@ int main() {
     assert(cmder_cmd(cmder, &(cmder_cmd_t){
         .name = "help",
         .callback = &help_cb
-    }));
+    }, NULL) == CU_OK);
 
-    cmder_cmd_handle_t echo = cmder_cmd(cmder, &(cmder_cmd_t){
+    cmder_cmd_handle_t echo;
+    
+    assert(cmder_cmd(cmder, &(cmder_cmd_t){
         .name = "echo",
         .callback = &echo_cb
-    });
+    }, &echo) == CU_OK);
 
     assert(echo);
 
@@ -76,45 +78,52 @@ int main() {
         .is_arg = true
     }) == 0);
 
-    assert(ok = cmder_cmd(cmder, &(cmder_cmd_t){ 
+    assert(cmder_cmd(cmder, &(cmder_cmd_t){ 
         .name = "ok",
         .callback = &ok_cb
-    }));
+    }, &ok) == CU_OK);
 
-    assert(cmder_opt(echo, &(cmder_opt_t){ .name = 'm' }) != 0); // already exist
-    assert(! cmder_cmd(cmder, &(cmder_cmd_t){ .name = "kkk" })); // no callback provided
+    assert(cmder_cmd(cmder, &(cmder_cmd_t){
+        .name = "help",
+        .callback = &help_cb
+    }, NULL) == CU_ERR_CMDER_CMD_EXIST); // already exist
 
-    assert(cmder_run(cmder, "+") != 0); // wrong cmder name
-    assert(cmder_run(cmder, "esp32") != 0); // wrong cmder name
-    assert(cmder_run(cmder, "+esp32") != 0); // no cmd name
-    assert(cmder_run(cmder, "+esp32 test") != 0); // test cmd does not exists
-    assert(cmder_run(cmder, "+esp32 echo") != 0); // missing mandatory option m
+    assert(cmder_opt(echo, &(cmder_opt_t){ .name = 'm' }) == CU_ERR_CMDER_OPT_EXIST); // already exist
+
+    // no callback provided
+    assert(cmder_cmd(cmder, &(cmder_cmd_t){ .name = "kkk" }, NULL) == CU_ERR_INVALID_ARG);
+
+    assert(cmder_run(cmder, "+") != CU_OK); // wrong cmder name
+    assert(cmder_run(cmder, "esp32") != CU_OK); // wrong cmder name
+    assert(cmder_run(cmder, "+esp32") != CU_OK); // no cmd name
+    assert(cmder_run(cmder, "+esp32 test") != CU_OK); // test cmd does not exists
+    assert(cmder_run(cmder, "+esp32 echo") != CU_OK); // missing mandatory option m
     assert(!echo_fired);
-    assert(cmder_run(cmder, "+esp32 echo -x") != 0); // unknown option
+    assert(cmder_run(cmder, "+esp32 echo -x") != CU_OK); // unknown option
     assert(!echo_fired);
-    assert(cmder_run(cmder, "+esp32 echo -m") != 0); // m is arg and argval missing
+    assert(cmder_run(cmder, "+esp32 echo -m") != CU_OK); // m is arg and argval missing
     assert(!echo_fired);
     echo_fired = false;
-    assert(cmder_run(cmder, "+esp32 echo -m hey") == 0); // ok
+    assert(cmder_run(cmder, "+esp32 echo -m hey") == CU_OK); // ok
     assert(echo_fired);
     echo_fired = false;
     assert(estreq(echo_message, "hey"));
     free(echo_message);
     echo_message = NULL;
     echo_fired = false;
-    assert(cmder_run(cmder, "+esp32 echo -m whats up") == 0); // ok, "up" extra arg
+    assert(cmder_run(cmder, "+esp32 echo -m whats up") == CU_OK); // ok, "up" extra arg
     assert(echo_fired);
     assert(estreq(echo_message, "whats"));
     free(echo_message);
     echo_message = NULL;
     echo_fired = false;
-    assert(cmder_run(cmder, "+esp32 echo -- -m hey") != 0); // parsing terminated with --, missing m
+    assert(cmder_run(cmder, "+esp32 echo -- -m hey") != CU_OK); // parsing terminated with --, missing m
     assert(!echo_fired);
     help_fired = false;
-    assert(cmder_run(cmder, "+esp32 help") == 0); // ok
+    assert(cmder_run(cmder, "+esp32 help") == CU_OK); // ok
     assert(help_fired);
     ok_fired = false;
-    assert(cmder_run(cmder, "+esp32 ok") == 0); // ok
+    assert(cmder_run(cmder, "+esp32 ok") == CU_OK); // ok
     assert(ok_fired);
 
     const char* too_long_cmd = "+esp32 echo -m aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -128,14 +137,14 @@ int main() {
     assert(cmder_run(cmder, too_long_cmd) == CU_ERR_CMDER_CMDLINE_TOO_BIG);
 
     echo_fired = false;
-    assert(cmder_run(cmder, "+esp32 echo -m \"whats up\"") == 0); // ok
+    assert(cmder_run(cmder, "+esp32 echo -m \"whats up\"") == CU_OK); // ok
     assert(echo_fired);
     assert(estreq(echo_message, "whats up"));
     free(echo_message);
     echo_message = NULL;
 
     echo_fired = false;
-    assert(cmder_run(cmder, "+esp32 echo -m \"this is \\\"quoted\\\" word\"") == 0); // ok
+    assert(cmder_run(cmder, "+esp32 echo -m \"this is \\\"quoted\\\" word\"") == CU_OK); // ok
     assert(echo_fired);
     assert(estreq(echo_message, "this is \"quoted\" word"));
     free(echo_message);
@@ -150,16 +159,17 @@ int main() {
 static void test_getoopts(cmder_handle_t cmder) {
     char* tmp;
 
-    cmder_cmd_handle_t cmplx = cmder_cmd(cmder, &(cmder_cmd_t){ .name = "c1", .callback = &null_cb });
+    cmder_cmd_handle_t cmplx;
+    assert(cmder_cmd(cmder, &(cmder_cmd_t){ .name = "c1", .callback = &null_cb }, &cmplx) == CU_OK);
     assert(cmplx);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'a' }) == 0);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'b', .is_arg = true }) == 0);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'c', .is_arg = true, .is_optional = true }) == 0);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'd' }) == 0);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'e', .is_arg = true, .is_optional = true }) == 0);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'f', .is_arg = true }) == 0);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'g' }) == 0);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'h' }) == 0);
+    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'a' }) == CU_OK);
+    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'b', .is_arg = true }) == CU_OK);
+    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'c', .is_arg = true, .is_optional = true }) == CU_OK);
+    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'd' }) == CU_OK);
+    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'e', .is_arg = true, .is_optional = true }) == CU_OK);
+    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'f', .is_arg = true }) == CU_OK);
+    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'g' }) == CU_OK);
+    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'h' }) == CU_OK);
     assert(tmp = cmder_getoopts(cmplx));
     assert(estreq(tmp, ":ab:c::de::f:gh"));
     free(tmp);
