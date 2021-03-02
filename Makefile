@@ -3,8 +3,8 @@ CC=gcc
 null:
 	@:
 
-test-custring: tests/custring.test.o custring.o
-	$(CC) -o tests/custring.test tests/custring.test.o custring.o -I.
+test-estr: tests/estr.test.o estr.o
+	$(CC) -o tests/estr.test tests/estr.test.o estr.o -I.
 
 clean:
 	find ./ -name "*.o" -type f -delete

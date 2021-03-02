@@ -1,22 +1,22 @@
-#include "custring.h"
+#include "estr.h"
 #include "cutils.h"
 #include <string.h>
 
-bool custreq(const char* str1, const char* str2) {
+bool estreq(const char* str1, const char* str2) {
     if(!str1 || !str2)
         return false;
     
     return strcmp(str1, str2) == 0;
 }
 
-bool custrneq(const char* str1, const char* str2, size_t n) {
+bool estrneq(const char* str1, const char* str2, size_t n) {
     if(!str1 || !str2)
         return false;
     
     return strncmp(str1, str2, n) == 0;
 }
 
-bool custrsw(const char* str1, const char* str2) {
+bool estrsw(const char* str1, const char* str2) {
     if(!str1 || !str2) {
         return false;
     }
@@ -27,7 +27,7 @@ bool custrsw(const char* str1, const char* str2) {
     return i > 0 && !str2[i];
 }
 
-bool custrew(const char* str1, const char* str2) {
+bool estrew(const char* str1, const char* str2) {
 	if(!str1 || !str2)
 		return false;
 	
@@ -47,7 +47,7 @@ bool custrew(const char* str1, const char* str2) {
 	return i < diff;
 }
 
-bool custrn_is_digit_only(const char* str, size_t n) {
+bool estrn_is_digit_only(const char* str, size_t n) {
     if(!str)
         return false;
 
@@ -62,7 +62,7 @@ bool custrn_is_digit_only(const char* str, size_t n) {
     return true;
 }
 
-size_t custrn_chrcnt(const char* str, char chr, size_t n) {
+size_t estrn_chrcnt(const char* str, char chr, size_t n) {
     if(!str)
         return 0;
     
@@ -78,7 +78,7 @@ size_t custrn_chrcnt(const char* str, char chr, size_t n) {
 	return cnt;
 }
 
-char** custrsplit(const char* str, const char chr, size_t* out_len) {
+char** estrsplit(const char* str, const char chr, size_t* out_len) {
     if(!str || !out_len)
         return NULL;
 
