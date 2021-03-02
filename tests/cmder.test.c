@@ -117,6 +117,13 @@ int main() {
     assert(cmder_run(cmder, "+esp32 ok") == 0); // ok
     assert(ok_fired);
 
+    const char* too_long_cmd = "+esp32 echo -m aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "aaaaaaaaaaaaaaaaaaaaaaaa";
+    
+    assert(cmder_run(cmder, too_long_cmd) != 0); // default max is 256, this command is 274
+
     echo_fired = false;
     assert(cmder_run(cmder, "+esp32 echo -m \"whats up\"") == 0); // ok
     assert(echo_fired);
