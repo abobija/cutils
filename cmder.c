@@ -32,6 +32,8 @@ cmder_handle_t cmder_create(cmder_t* config) {
         .cmdline_max_len = config->cmdline_max_len > 0 ? config->cmdline_max_len : CMDER_DEFAULT_CMDLINE_MAX_LEN
     );
 
+    // memcheck?
+
     return cmder;
 }
 
@@ -87,7 +89,7 @@ char* cmder_getoopts(cmder_cmd_handle_t cmd) {
 
 #define cmder_argv_iteration_handler() { \
     end = *prev == '"' && !quote_escaped ? prev : curr; \
-    argv[i] = strndup(start, end - start); \
+    argv[i] = strndup(start, end - start); /* memcheck? */ \
     if(strstr(argv[i], "\\\"")) { \
         char* tmp = estrrep(argv[i], "\\\"", "\""); \
         if(tmp) { \
@@ -143,6 +145,8 @@ char** cmder_argv(const char* cmdline, int* argc) {
 
     char** argv = calloc(len, len * sizeof(char*));
 
+    // memcheck?
+
     while(*curr) cmder_argv_iteration({
         cmder_argv_iteration_handler();
     });
@@ -155,16 +159,16 @@ char** cmder_argv(const char* cmdline, int* argc) {
     return argv;
 }
 
-static int getoopts_recalc(cmder_cmd_handle_t cmd) {
+static cu_err_t getoopts_recalc(cmder_cmd_handle_t cmd) {
     char* getoopts = cmder_getoopts(cmd);
 
     if(!getoopts)
-        return -1;
+        return CU_ERR_CMDER_GETOOPTS_CALC_FAIL;
     
     free(cmd->getoopts);
     cmd->getoopts = getoopts;
 
-    return 0;
+    return CU_OK;
 }
 
 static cmder_cmd_handle_t get_cmd_by_name(cmder_handle_t cmder, const char* cmd_name) {
@@ -196,15 +200,11 @@ cmder_cmd_handle_t cmder_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd) {
         .callback = cmd->callback
     );
 
-    if(!_cmd) {
-        // todo: nomem
-    }
+    // memcheck?
 
     cmder_cmd_handle_t* cmds = realloc(cmder->cmds, ++cmder->cmds_len * sizeof(cmder_cmd_handle_t));
 
-    if(!cmds) {
-        // todo: nomem
-    }
+    // memcheck?
 
     cmder->cmds = cmds;
     cmder->cmds[cmder->cmds_len - 1] = _cmd;
@@ -225,12 +225,33 @@ static cmder_opt_handle_t get_opt_by_name(cmder_cmd_handle_t cmd, char name) {
     return NULL;
 }
 
-int cmder_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
+static void opt_free(cmder_opt_handle_t opt) {
+    if(!opt)
+        return;
+
+    free(opt);
+}
+
+static void cmd_free(cmder_cmd_handle_t cmd) {
+    if(!cmd)
+        return;
+
+    cmd->cmder = NULL;
+    cmd->callback = NULL;
+    free(cmd->name);
+    cmd->name = NULL;
+    free(cmd->getoopts);
+    cmd->getoopts = NULL;
+    culist_free_(cmd->opts, cmd->opts_len, opt_free);
+    free(cmd);
+}
+
+cu_err_t cmder_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
     if(!cmd || !cmd->cmder || !opt)
-        return -2;
+        return CU_ERR_INVALID_ARG;
 
     if(get_opt_by_name(cmd, opt->name)) // already exist
-        return -1;
+        return CU_ERR_CMDER_OPT_EXIST;
     
     cmder_opt_handle_t _opt = cuctor2(cmder_opt_handle_t, cmder_opt_t,
         .name = opt->name,
@@ -239,21 +260,20 @@ int cmder_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
     );
 
     if(!_opt) {
-        // todo: nomem
+        return CU_ERR_NO_MEM;
     }
 
     cmder_opt_handle_t* opts = realloc(cmd->opts, ++cmd->opts_len * sizeof(cmder_opt_handle_t));
     
     if(!opts) {
-        // todo: nomem
+        opt_free(_opt);
+        return CU_ERR_NO_MEM;
     }
 
     cmd->opts = opts;
     cmd->opts[cmd->opts_len - 1] = _opt;
 
-    getoopts_recalc(cmd);
-    
-    return 0;
+    return getoopts_recalc(cmd);
 }
 
 cmder_opt_val_t* cmder_opt_val(char optname, cmder_cmd_val_t* cmdval) {
@@ -269,6 +289,9 @@ cmder_opt_val_t* cmder_opt_val(char optname, cmder_cmd_val_t* cmdval) {
 }
 
 static void optval_free(cmder_opt_val_t* optval) {
+    if(!optval)
+        return;
+    
     optval->opt = NULL;
     optval->state = false;
     optval->val = NULL;
@@ -276,6 +299,9 @@ static void optval_free(cmder_opt_val_t* optval) {
 }
 
 static void cmdval_free(cmder_cmd_val_t* cmdval) {
+    if(!cmdval)
+        return;
+    
     cmdval->cmder = NULL;
     cmdval->context = NULL;
     culist_free_(cmdval->opts, cmdval->opts_len, optval_free);
@@ -296,57 +322,63 @@ static bool mandatory_opts_are_set(cmder_opt_val_t** optvals, size_t len) {
     return true;
 }
 
-int cmder_run(cmder_handle_t cmder, const char* cmdline) {
+cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline) {
     if(!cmder || !cmdline)
-        return -2;
+        return CU_ERR_INVALID_ARG;
 
     if(cmder->cmds_len <= 0) // no registered cmds
-        return -1;
+        return CU_ERR_CMDER_NO_CMDS;
 
     size_t cmdline_len = strlen(cmdline);
 
     if(cmdline_len > cmder->cmdline_max_len)
-        return -1;
+        return CU_ERR_CMDER_CMDLINE_TOO_BIG;
     
     size_t cmder_name_len = strlen(cmder->name);
 
     if(!estrneq(cmdline, cmder->name, cmder_name_len)) // not for us
-        return -2;
+        return CU_ERR_CMDER_IGNORE;
 
     int argc;
     char** argv = cmder_argv(cmdline + cmder_name_len, &argc);
 
-    if(argc <= 0) // nothing to do
-        return -1;
+    if(!argv || argc <= 0) // nothing to do
+        return CU_ERR_CMDER_IGNORE;
 
     cmder_cmd_handle_t cmd = get_cmd_by_name(cmder, argv[0]); // argv[0] is cmd name
 
     if(!cmd) // cmd does not exist
-        return -1;
-
-    //printf("cmd (name=%s, opts_len=%ld, getopt=%s)\n", cmd->name, cmd->opts_len, cmd->getoopts);
-
+        return CU_ERR_CMDER_CMD_NOEXIST;
+    
     cmder_cmd_val_t* cmdval = cuctor(cmder_cmd_val_t,
         .cmder = cmder,
         .cmd = cmd,
         .context = cmder->context
     );
 
+    // memcheck?
+
     if(cmd->opts_len <= 0) {
         cmd->callback(cmdval);
-        return 0;
+        cmdval_free(cmdval);
+        culist_free(argv, argc);
+        return CU_OK;
     }
 
     cmdval->opts_len = cmd->opts_len;
     cmdval->opts = calloc(cmdval->opts_len, sizeof(cmder_opt_val_t*));
 
+    // memcheck?
+
     for(size_t i = 0; i < cmd->opts_len; i++) {
         cmdval->opts[i] = cuctor(cmder_opt_val_t,
             .opt = cmd->opts[i]
         );
+
+        // memcheck?
     }
 
-    int err = 0;
+    cu_err_t err = CU_OK;
 
     opterr = 0;
     optind = 0;
@@ -354,18 +386,18 @@ int cmder_run(cmder_handle_t cmder, const char* cmdline) {
     int o;
     while((o = getopt(argc, argv, cmd->getoopts)) != -1) {
         if(o == ':') {
-            // value missing for option: optopt
-            err = -1;
+            // value argument missing for option: optopt
+            err = CU_ERR_CMDER_OPT_ARG_MISSING;
             break;
         } else if(o == '?') {
             // unknown option: optopt
-            err = -1;
+            err = CU_ERR_CMDER_UNKNOWN_OPTION;
             break;
         } else {
             cmder_opt_val_t* optval = cmder_opt_val(o, cmdval);
 
             if(!optval) { // interesting, but not found.. this should not happen
-                err = 1;
+                err = CU_FAIL;
                 break;
             }
 
@@ -374,20 +406,18 @@ int cmder_run(cmder_handle_t cmder, const char* cmdline) {
             } else {
                 optval->state = true;
             }
-
-            err = 0;
         }
     }
 
-    for(; optind < argc; optind++){
-        printf("cmd %s has extra argument: %s\n", cmd->name, argv[optind]);
-    }
-
-    if(err == 0) {
+    if(err == CU_OK) {
         if(mandatory_opts_are_set(cmdval->opts, cmdval->opts_len)) {
+            for(; optind < argc; optind++) {
+                printf("cmd %s has extra argument: %s\n", cmd->name, argv[optind]);
+            }
+
             cmd->callback(cmdval);
         } else {
-            err = -1;
+            err = CU_ERR_CMDER_ARGS_NOT_SET;
         }
     }
 
@@ -397,23 +427,6 @@ int cmder_run(cmder_handle_t cmder, const char* cmdline) {
     return err;
 }
 
-static void opt_free(cmder_opt_handle_t opt) {
-    free(opt);
-}
-
-static void cmd_free(cmder_cmd_handle_t cmd) {
-    if(!cmd)
-        return;
-
-    cmd->cmder = NULL;
-    free(cmd->name);
-    cmd->name = NULL;
-    free(cmd->getoopts);
-    cmd->getoopts = NULL;
-    culist_free_(cmd->opts, cmd->opts_len, opt_free);
-    free(cmd);
-}
-
 void cmder_destroy(cmder_handle_t cmder) {
     if(!cmder)
         return;
@@ -421,5 +434,6 @@ void cmder_destroy(cmder_handle_t cmder) {
     culist_free_(cmder->cmds, cmder->cmds_len, cmd_free);
     free(cmder->name);
     cmder->name = NULL;
+    cmder->context = NULL;
     free(cmder);
 }

@@ -1,6 +1,13 @@
 #ifndef _CUTILS_H_
 #define _CUTILS_H_
 
+typedef int cu_err_t;
+
+#define CU_OK 0
+#define CU_FAIL -1
+#define CU_ERR_INVALID_ARG -2
+#define CU_ERR_NO_MEM -3
+
 /**
  * @brief Universal struct (type) constructor. User is responsible for freeing the resulting object
  * @param type Struct type name (ex: person_t)
@@ -26,7 +33,7 @@
  * @return void
  */
 #define culist_free_(list, len, item_free_fnc) \
-    ({ for(size_t i = 0; i < len; i++) { item_free_fnc(list[i]); list[i] = NULL; } free(list); list = NULL; })
+    ({ for(size_t i = 0; i < len; i++) { item_free_fnc(list[i]); list[i] = NULL; } free(list); list = NULL; len = 0; })
 
 /**
  * @brief Free the list (array of pointers). For the freeing the list items free() will be used.
