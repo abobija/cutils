@@ -26,32 +26,32 @@ static void test_estrneq() {
 
 static void test_estrsw() {
     assert( estrsw("+react", "+react"));
-	assert( estrsw("+react to this", "+react"));
-	assert(!estrsw("+react", "+react to this"));
-	assert(!estrsw(NULL, "+react"));
-	assert(!estrsw("+react", NULL));
-	assert(!estrsw(NULL, NULL));
-	assert(!estrsw("", "+react"));
-	assert(!estrsw("+react", ""));
-	assert(!estrsw("", ""));
-	assert(!estrsw("+react", "   "));
-	assert(!estrsw("  ", "+react"));
+    assert( estrsw("+react to this", "+react"));
+    assert(!estrsw("+react", "+react to this"));
+    assert(!estrsw(NULL, "+react"));
+    assert(!estrsw("+react", NULL));
+    assert(!estrsw(NULL, NULL));
+    assert(!estrsw("", "+react"));
+    assert(!estrsw("+react", ""));
+    assert(!estrsw("", ""));
+    assert(!estrsw("+react", "   "));
+    assert(!estrsw("  ", "+react"));
 }
 
 static void test_custrew() {
     assert( estrew("+react", "+react"));
-	assert( estrew("+react", "ct"));
-	assert( estrew("a", "a"));
-	assert( estrew("abcd", "cd"));
-	assert(!estrew("+react", "this to +react"));
-	assert(!estrew(NULL, "+react"));
-	assert(!estrew("+react", NULL));
-	assert(!estrew(NULL, NULL));
-	assert(!estrew("", "+react"));
-	assert(!estrew("+react", ""));
-	assert(!estrew("", ""));
-	assert(!estrew("+react", "   "));
-	assert(!estrew("  ", "+react"));
+    assert( estrew("+react", "ct"));
+    assert( estrew("a", "a"));
+    assert( estrew("abcd", "cd"));
+    assert(!estrew("+react", "this to +react"));
+    assert(!estrew(NULL, "+react"));
+    assert(!estrew("+react", NULL));
+    assert(!estrew(NULL, NULL));
+    assert(!estrew("", "+react"));
+    assert(!estrew("+react", ""));
+    assert(!estrew("", ""));
+    assert(!estrew("+react", "   "));
+    assert(!estrew("  ", "+react"));
 }
 
 static void test_estrn_is_digit_only() {
