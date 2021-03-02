@@ -3,11 +3,20 @@
 
 /**
  * @brief Universal struct (type) constructor. User is responsible for freeing the resulting object
- * @param type Struct type name (ex: discord_person_t)
+ * @param type Struct type name (ex: person_t)
  * @param ... Struct attributes (ex: .id = 2, .name = strdup("John"))
  * @return Pointer to dynamically allocated struct
  */
 #define cuctor(type, ...) ({ type* obj = calloc(1, sizeof(type)); if(obj) { *obj = (type){ __VA_ARGS__ }; } obj; })
+
+/**
+ * @brief Universal handle constructor. User is responsible for freeing the resulting object
+ * @param handle_type Handle type (ex: person_handle_t)
+ * @param struct Struct (ex: struct person)
+ * @param ... Struct attributes (ex: .id = 2, .name = strdup("John"))
+ * @return Pointer to dynamically allocated struct
+ */
+#define cuctor2(handle_type, struct, ...) ({ handle_type obj = calloc(1, sizeof(struct)); if(obj) { *obj = (struct){ __VA_ARGS__ }; } obj; })
 
 /**
  * @brief Free the list (array of pointers)
@@ -17,7 +26,7 @@
  * @return void
  */
 #define cufree_list_(list, len, item_free_fnc) \
-    ({ for(size_t i = 0; i < len; i++) { item_free_fnc(list[i]); } free(list); })
+    ({ for(size_t i = 0; i < len; i++) { item_free_fnc(list[i]); list[i] = NULL; } free(list); list = NULL; })
 
 /**
  * @brief Free the list (array of pointers). For the freeing the list items free() will be used.
