@@ -140,6 +140,10 @@ static void test_estrcat() {
     res = estrcat("", "b", " ");
     assert(estreq(res, "b "));
     free(res);
+
+    res = estrcat("a", "b", NULL, "c"); // c will be ignored
+    assert(estreq(res, "ab"));
+    free(res);
 }
 
 static void test_estr_url_encode() {

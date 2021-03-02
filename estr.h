@@ -6,7 +6,8 @@
 #include <string.h>
 
 /**
- * @brief Concatenate optional number of strings. User need to release the resulting string with a free function
+ * @brief Concatenate optional number of strings. User need to release the resulting string with a free function.
+ *        Make sure that no one of the strings are NULL, otherwise concatenation will stop on the first NULL.
  * @return Pointer to result string or NULL on failure (no memory)
  */
 #define estrcat(...) _estrcat(__VA_ARGS__, NULL)
