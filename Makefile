@@ -3,6 +3,8 @@ CC=gcc
 null:
 	@:
 
+test: test-estr test-cmder
+
 test-estr: tests/estr.test.o estr.o
 	$(CC) -o tests/estr.test tests/estr.test.o estr.o -I. && tests/estr.test
 
