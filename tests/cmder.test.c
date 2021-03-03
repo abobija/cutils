@@ -103,6 +103,7 @@ int main() {
     // no callback provided
     assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "kkk" }, NULL) == CU_ERR_INVALID_ARG);
 
+    assert(cmder_run(cmder, "") != CU_OK); // no command
     assert(cmder_run(cmder, "+") != CU_OK); // wrong cmder name
     assert(cmder_run(cmder, "esp32") != CU_OK); // wrong cmder name
     assert(cmder_run(cmder, "+esp32") != CU_OK); // no cmd name
