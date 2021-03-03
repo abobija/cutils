@@ -52,10 +52,10 @@ typedef struct {
 typedef struct {
     cmder_handle_t cmder;
     cmder_cmd_handle_t cmd;
-    void* context;
+    const void* context;
     cmder_opt_val_t** opts;
     uint16_t opts_len;
-    char** extra_args;
+    const char** extra_args;
     uint16_t extra_args_len;
 } cmder_cmd_val_t;
 
