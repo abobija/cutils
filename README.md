@@ -8,7 +8,7 @@ Set of compact and portable C utilities with the intention of being very fast, e
 [Makefile](https://www.gnu.org/software/make/manual/make.html#Overview) system is used for building.
 
 ```
-make TARGET [TARGET...]
+make [TARGET] [TARGET...]
 ```
 
 | Target  | Description |

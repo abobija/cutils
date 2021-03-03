@@ -16,15 +16,6 @@ typedef int cu_err_t;
 #define CU_ERR_EMPTY_STRING  (-6)
 
 /**
- * @brief Universal struct (type) constructor. User is responsible for freeing the resulting object
- * @param type Struct type name (ex: person_t)
- * @param ... Struct attributes (ex: .id = 2, .name = strdup("John"))
- * @return Pointer to dynamically allocated struct
- */
-#define cu_ctor(type, ...) \
-    ({ type* obj = calloc(1, sizeof(type)); if(obj) { *obj = (type){ __VA_ARGS__ }; } obj; })
-
-/**
  * @brief Universal handle constructor. User is responsible for freeing the resulting object
  * @param handle_type Handle type (ex: person_handle_t)
  * @param struct Struct (ex: struct person)
@@ -33,6 +24,15 @@ typedef int cu_err_t;
  */
 #define cu_tctor(handle_type, struct, ...) \
     ({ handle_type obj = calloc(1, sizeof(struct)); if(obj) { *obj = (struct){ __VA_ARGS__ }; } obj; })
+
+/**
+ * @brief Universal struct (type) constructor. User is responsible for freeing the resulting object
+ * @param type Struct type name (ex: person_t)
+ * @param ... Struct attributes (ex: .id = 2, .name = strdup("John"))
+ * @return Pointer to dynamically allocated struct
+ */
+#define cu_ctor(type, ...) \
+    cu_tctor(type*, type, __VA_ARGS__)
 
 /**
  * @brief Free the list (array of pointers) with custom type for the length variable,
@@ -54,7 +54,8 @@ typedef int cu_err_t;
  * @param len Number of the items in the list
  * @return void
  */
-#define cu_list_tfree(list, len_type, len) cu_list_tfreex(list, len_type, len, free)
+#define cu_list_tfree(list, len_type, len) \
+    cu_list_tfreex(list, len_type, len, free)
 
 /**
  * @brief Free the list (array of pointers). For the freeing the list items free() will be used
@@ -62,7 +63,8 @@ typedef int cu_err_t;
  * @param len Number of the items in the list
  * @return void
  */
-#define cu_list_free(list, len) cu_list_tfree(list, int, len)
+#define cu_list_free(list, len) \
+    cu_list_tfree(list, int, len)
 
 /**
  * @brief Free the list (array of pointers) with custom function for freeing the list items
@@ -71,7 +73,8 @@ typedef int cu_err_t;
  * @param free_fnc Custom function for freeing list items
  * @return void
  */
-#define cu_list_freex(list, len, free_fnc) cu_list_tfreex(list, int, len, free_fnc)
+#define cu_list_freex(list, len, free_fnc) \
+    cu_list_tfreex(list, int, len, free_fnc)
 
 #ifdef __cplusplus
 }

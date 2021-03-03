@@ -5,15 +5,15 @@ CC = gcc $(CCFLAGS) $(CCWARNINGS)
 ESTR_OBJS = estr.o
 CMDER_OBJS = $(ESTR_OBJS) cmder.o
 
-.PHONY: all all.test clean
+.PHONY: all test clean
 
-null:
+all: cutils estr cmder
 	@:
 
 %.o: %.c Makefile
 	$(CC) -c -o $@ $<
 
-all: estr cmder
+cutils:
 	@:
 
 estr: $(ESTR_OBJS)
@@ -22,8 +22,12 @@ estr: $(ESTR_OBJS)
 cmder: $(CMDER_OBJS)
 	@:
 
-test: estr.test cmder.test
+test: cutils.test estr.test cmder.test
 	@echo "All test passed"
+
+cutils.test: $(ESTR_OBJS) tests/cutils.test.o
+	$(CC) -o tests/$@ $^
+	tests/cutils.test && echo "cuilts tests passed"
 
 estr.test: $(ESTR_OBJS) tests/estr.test.o
 	$(CC) -o tests/$@ $^
