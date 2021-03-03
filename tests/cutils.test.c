@@ -14,6 +14,11 @@ typedef test_struct_t* test_struct_handle_t;
 static char** create_list(int* len);
 
 int main() {
+    // testing constants
+
+    assert(CU_OK == 0);
+    assert(CU_FAIL == -1);
+
     // testing attrs
 
     test_struct_t* sptr = cu_ctor(test_struct_t, 
