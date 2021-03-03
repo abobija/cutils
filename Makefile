@@ -27,11 +27,12 @@ test: estr.test cmder.test
 
 estr.test: $(ESTR_OBJS) tests/estr.test.o
 	$(CC) -o tests/$@ $^
-	tests/estr.test
+	tests/estr.test && echo "estr tests passed"
 
 cmder.test: $(CMDER_OBJS) tests/cmder.test.o
 	$(CC) -o tests/$@ $^
-	tests/cmder.test
+	tests/cmder.test && echo "cmder tests passed"
 
 clean:
 	find ./ -type f \( -iname "*.o" -o -iname "*.test" \) -delete
+	@echo "Project cleaned"

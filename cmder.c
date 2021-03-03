@@ -26,7 +26,7 @@ cmder_handle_t cmder_create(cmder_t* config) {
     if(!config)
         return NULL;
     
-    cmder_handle_t cmder = cu_ctor2(cmder_handle_t, struct cmder_handle,
+    cmder_handle_t cmder = cu_tctor(cmder_handle_t, struct cmder_handle,
         .name = strdup(config->name),
         .context = config->context,
         .cmdline_max_len = config->cmdline_max_len > 0 ? config->cmdline_max_len : CMDER_DEFAULT_CMDLINE_MAX_LEN
@@ -194,7 +194,7 @@ cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_
     if(cmder_get_cmd_by_name(cmder, cmd->name)) // already exist
         return CU_ERR_CMDER_CMD_EXIST;
     
-    cmder_cmd_handle_t _cmd = cu_ctor2(cmder_cmd_handle_t, struct cmder_cmd_handle,
+    cmder_cmd_handle_t _cmd = cu_tctor(cmder_cmd_handle_t, struct cmder_cmd_handle,
         .cmder = cmder,
         .name = strdup(cmd->name),
         .callback = cmd->callback
@@ -245,7 +245,7 @@ static void _cmd_free(cmder_cmd_handle_t cmd) {
     cmd->name = NULL;
     free(cmd->getoopts);
     cmd->getoopts = NULL;
-    cu_list_free_(cmd->opts, cmd->opts_len, _opt_free);
+    cu_list_tfreex(cmd->opts, uint16_t, cmd->opts_len, _opt_free);
     free(cmd);
 }
 
@@ -256,7 +256,7 @@ cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
     if(_get_opt_by_name(cmd, opt->name)) // already exist
         return CU_ERR_CMDER_OPT_EXIST;
     
-    cmder_opt_handle_t _opt = cu_ctor2(cmder_opt_handle_t, cmder_opt_t,
+    cmder_opt_handle_t _opt = cu_tctor(cmder_opt_handle_t, cmder_opt_t,
         .name = opt->name,
         .is_arg = opt->is_arg,
         .is_optional = opt->is_optional
@@ -307,7 +307,7 @@ static void _cmdval_free(cmder_cmd_val_t* cmdval) {
     
     cmdval->cmder = NULL;
     cmdval->context = NULL;
-    cu_list_free_(cmdval->opts, cmdval->opts_len, _optval_free);
+    cu_list_tfreex(cmdval->opts, uint16_t, cmdval->opts_len, _optval_free);
     cmdval->extra_args = NULL;
     cmdval->extra_args_len = 0;
     free(cmdval);
@@ -450,7 +450,7 @@ void cmder_destroy(cmder_handle_t cmder) {
     if(!cmder)
         return;
 
-    cu_list_free_(cmder->cmds, cmder->cmds_len, _cmd_free);
+    cu_list_tfreex(cmder->cmds, uint16_t, cmder->cmds_len, _cmd_free);
     free(cmder->name);
     cmder->name = NULL;
     cmder->context = NULL;

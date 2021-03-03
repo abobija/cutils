@@ -30,7 +30,7 @@ void echo_cb(cmder_cmd_val_t* cmdval) {
     assert(cmdval->opts);
     assert(cmdval->opts_len == 1);
     cmder_opt_val_t* optval;
-    assert(optval = cmder_get_optval(cmdval, 'm'));
+    assert((optval = cmder_get_optval(cmdval, 'm')));
     assert(optval->val);
     assert(!optval->state);
     assert(optval->opt->is_arg);
@@ -50,7 +50,7 @@ void ok_cb(cmder_cmd_val_t* cmdval) {
     assert(cmdval->cmd == ok);
 }
 
-void null_cb(cmder_cmd_val_t* cmdval) { /* noop */ }
+void null_cb(cmder_cmd_val_t* cmdval) { (void)(cmdval); /* noop */ }
 
 static void test_getoopts(cmder_handle_t cmder);
 static void test_args();
@@ -185,7 +185,7 @@ static void test_getoopts(cmder_handle_t cmder) {
     assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'f', .is_arg = true }) == CU_OK);
     assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'g' }) == CU_OK);
     assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'h' }) == CU_OK);
-    assert(tmp = cmder_getoopts(cmplx));
+    assert((tmp = cmder_getoopts(cmplx)));
     assert(estr_eq(tmp, ":ab:c::de::f:gh"));
     free(tmp);
 }

@@ -136,7 +136,7 @@ char** estr_split(const char* str, const char chr, size_t* out_len) {
             result[i] = malloc(piece_len + 1);
             if(!result[i]) {
                 size_t _tmp = i + 1;
-                cu_list_free(result, _tmp);
+                cu_list_tfree(result, size_t, _tmp);
                 *out_len = 0;
                 return NULL;
             }

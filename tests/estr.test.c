@@ -81,53 +81,53 @@ static void test_estr_split() {
     assert(strlen(_pcs[0]) == 1 && strlen(_pcs[1]) == 1 && strlen(_pcs[2]) == 1 && 
         estr_eq(_pcs[0], "a") && estr_eq(_pcs[1], "b") && estr_eq(_pcs[2], "c")
     );
-    cu_list_free(_pcs, _len);
+    cu_list_tfree(_pcs, size_t, _len);
 
     _pcs = estr_split(",,d", ',', &_len);
     assert(_len == 1);
     assert(strlen(_pcs[0]) == 1 && estr_eq(_pcs[0], "d"));
-    cu_list_free(_pcs, _len);
+    cu_list_tfree(_pcs, size_t, _len);
 
     _pcs = estr_split("a,,bc,d,,", ',', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 1 && strlen(_pcs[1]) == 2 && strlen(_pcs[2]) == 1 && 
         estr_eq(_pcs[0], "a") && estr_eq(_pcs[1], "bc") && estr_eq(_pcs[2], "d")
     );
-    cu_list_free(_pcs, _len);
+    cu_list_tfree(_pcs, size_t, _len);
 
     _pcs = estr_split("da", ',', &_len);
     assert(_len == 1 && estr_eq(_pcs[0], "da"));
-    cu_list_free(_pcs, _len);
+    cu_list_tfree(_pcs, size_t, _len);
 
     _pcs = estr_split("d,", ',', &_len);
     assert(_len == 1);
     assert(strlen(_pcs[0]) == 1 && estr_eq(_pcs[0], "d"));
-    cu_list_free(_pcs, _len);
+    cu_list_tfree(_pcs, size_t, _len);
 
     _pcs = estr_split("jan.feb.mar", '.', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 3 && strlen(_pcs[1]) == 3 && strlen(_pcs[2]) == 3 && 
         estr_eq(_pcs[0], "jan") && estr_eq(_pcs[1], "feb") && estr_eq(_pcs[2], "mar")
     );
-    cu_list_free(_pcs, _len);
+    cu_list_tfree(_pcs, size_t, _len);
 
     _pcs = estr_split("..jan..feb..mar..", '.', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 3 && strlen(_pcs[1]) == 3 && strlen(_pcs[2]) == 3 && 
         estr_eq(_pcs[0], "jan") && estr_eq(_pcs[1], "feb") && estr_eq(_pcs[2], "mar")
     );
-    cu_list_free(_pcs, _len);
+    cu_list_tfree(_pcs, size_t, _len);
 
     _pcs = estr_split("......", '.', &_len);
     assert(_len == 0 && !_pcs);
-    cu_list_free(_pcs, _len);
+    cu_list_tfree(_pcs, size_t, _len);
 
     _pcs = estr_split("     a     bc  d    ", ' ', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 1 && strlen(_pcs[1]) == 2 && strlen(_pcs[2]) == 1 && 
         estr_eq(_pcs[0], "a") && estr_eq(_pcs[1], "bc") && estr_eq(_pcs[2], "d")
     );
-    cu_list_free(_pcs, _len);
+    cu_list_tfree(_pcs, size_t, _len);
 }
 
 static void test_estr_cat() {
