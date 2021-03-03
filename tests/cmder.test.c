@@ -54,9 +54,11 @@ void null_cb(cmder_cmd_val_t* cmdval) { (void)(cmdval); /* noop */ }
 
 static void test_getoopts(cmder_handle_t cmder);
 static void test_args();
+static void test_args_ptrs();
 
 int main() {
     test_args();
+    test_args_ptrs();
 
     cmder_handle_t cmder = cmder_create(&(cmder_t){
         .name = "+esp32",
@@ -170,7 +172,6 @@ int main() {
     return 0;
 }
 
-
 static void test_getoopts(cmder_handle_t cmder) {
     char* tmp;
 
@@ -242,4 +243,36 @@ static void test_args() {
     assert(argc == 2);
     assert(argv && estr_eq(argv[0], "\"a\"") && estr_eq(argv[1], "b"));
     cu_list_free(argv, argc);
+}
+
+static int _argc;
+static char** _argv;
+
+void test_args_ptrs_cb(cmder_cmd_val_t* cmdval) {
+    cmder_opt_val_t* s = cmder_get_optval(cmdval, 's');
+    assert(s);
+    assert(estr_eq(s->val, "hello world"));
+
+    // it must be the pointer to the same address
+    // which means that value is not copied but referenced
+    assert(s->val == _argv[2]);
+}
+
+static void test_args_ptrs() {
+    _argv = cmder_args("test -s \"hello world\"", &_argc);
+    assert(_argv);
+    assert(_argc == 3);
+    assert(estr_eq(_argv[0], "test"));
+    assert(estr_eq(_argv[1], "-s"));
+    assert(estr_eq(_argv[2], "hello world"));
+
+    cmder_handle_t cmder = cmder_create(&(cmder_t){ .name = "cmder" });
+    assert(cmder);
+    cmder_cmd_handle_t test;
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "test", .callback = &test_args_ptrs_cb }, &test) == CU_OK);
+    assert(cmder_add_opt(test, &(cmder_opt_t) { .name = 's', .is_arg = true, .is_optional = false }) == CU_OK);
+    assert(cmder_run_args(cmder, _argc, _argv) == CU_OK);
+
+    cu_list_free(_argv, _argc);
+    cmder_destroy(cmder);
 }
