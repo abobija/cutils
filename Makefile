@@ -22,7 +22,7 @@ estr: $(ESTR_OBJS)
 cmder: $(CMDER_OBJS)
 	@:
 
-all.test: estr.test cmder.test
+test: estr.test cmder.test
 	@echo "All test passed"
 
 estr.test: $(ESTR_OBJS) tests/estr.test.o
