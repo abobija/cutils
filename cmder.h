@@ -8,6 +8,7 @@ extern "C" {
 #include "cutils.h"
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define CMDER_DEFAULT_CMDLINE_MAX_LEN 512
 
@@ -53,9 +54,9 @@ typedef struct {
     cmder_cmd_handle_t cmd;
     void* context;
     cmder_opt_val_t** opts;
-    size_t opts_len;
+    uint16_t opts_len;
     char** extra_args;
-    size_t extra_args_len;
+    uint16_t extra_args_len;
 } cmder_cmd_val_t;
 
 typedef void(*cmder_callback_t)(cmder_cmd_val_t* cmdval);

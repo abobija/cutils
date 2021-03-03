@@ -10,7 +10,7 @@ struct cmder_cmd_handle {
     cmder_callback_t callback;
     cmder_handle_t cmder;
     cmder_opt_handle_t* opts;
-    size_t opts_len;
+    uint16_t opts_len;
     char* getoopts;
 };
 
@@ -19,7 +19,7 @@ struct cmder_handle {
     void* context;
     size_t cmdline_max_len;
     cmder_cmd_handle_t* cmds;
-    size_t cmds_len;
+    uint16_t cmds_len;
 };
 
 cmder_handle_t cmder_create(cmder_t* config) {
@@ -41,9 +41,9 @@ char* cmder_getoopts(cmder_cmd_handle_t cmd) {
     if(!cmd || cmd->opts_len <= 0)
         return NULL;
 
-    size_t len = 1; // :
+    uint16_t len = 1; // :
 
-    for(size_t i = 0; i < cmd->opts_len; i++) {
+    for(uint16_t i = 0; i < cmd->opts_len; i++) {
         cmder_opt_handle_t opt = cmd->opts[i];
         len += opt->is_arg ? (opt->is_optional ? 3 : 2) : 1;
     }
@@ -56,7 +56,7 @@ char* cmder_getoopts(cmder_cmd_handle_t cmd) {
     getoopts[0] = ':';
     char* ptr = getoopts + 1;
 
-    for(size_t i = 0; i < cmd->opts_len; i++) {
+    for(uint16_t i = 0; i < cmd->opts_len; i++) {
         cmder_opt_handle_t opt = cmd->opts[i];
         *ptr++ = opt->name;
         if(!opt->is_arg) continue;
@@ -175,7 +175,7 @@ cmder_cmd_handle_t cmder_get_cmd_by_name(cmder_handle_t cmder, const char* cmd_n
     if(!cmder)
         return NULL;
 
-    for(size_t i = 0; i < cmder->cmds_len; i++) {
+    for(uint16_t i = 0; i < cmder->cmds_len; i++) {
         if(estr_eq(cmd_name, cmder->cmds[i]->name)) {
             return cmder->cmds[i];
         }
@@ -219,7 +219,7 @@ static cmder_opt_handle_t _get_opt_by_name(cmder_cmd_handle_t cmd, char name) {
     if(!cmd)
         return NULL;
     
-    for(size_t i = 0; i < cmd->opts_len; i++) {
+    for(uint16_t i = 0; i < cmd->opts_len; i++) {
         if(cmd->opts[i]->name == name) {
             return cmd->opts[i];
         }
@@ -282,7 +282,7 @@ cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
 cmder_opt_val_t* cmder_get_optval(cmder_cmd_val_t* cmdval, char optname) {
     cmder_opt_val_t** optvals = cmdval->opts;
 
-    for(size_t i = 0; i < cmdval->opts_len; i++) {
+    for(uint16_t i = 0; i < cmdval->opts_len; i++) {
         if(optvals[i]->opt->name == optname) {
             return optvals[i];
         }
@@ -313,10 +313,10 @@ static void _cmdval_free(cmder_cmd_val_t* cmdval) {
     free(cmdval);
 }
 
-static bool _mandatory_opts_are_set(cmder_opt_val_t** optvals, size_t len) {
+static bool _mandatory_opts_are_set(cmder_opt_val_t** optvals, uint16_t len) {
     cmder_opt_handle_t opt;
 
-    for(size_t i = 0; i < len; i++) {
+    for(uint16_t i = 0; i < len; i++) {
         opt = optvals[i]->opt;
 
         if(opt->is_arg && !opt->is_optional && !optvals[i]->val) {
@@ -355,7 +355,7 @@ cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv) {
 
     // memcheck?
 
-    for(size_t i = 0; i < cmd->opts_len; i++) {
+    for(uint16_t i = 0; i < cmd->opts_len; i++) {
         cmdval->opts[i] = cu_ctor(cmder_opt_val_t,
             .opt = cmd->opts[i]
         );
