@@ -1,9 +1,15 @@
 # :hammer_and_wrench: cutils
-C utilities
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+Set of compact and portable C utilities with the intention of being very fast, efficient and easy to use. Their main purpose is to be used in IoT and embedded systems.
 
 ## Targets
 
-Usage: `make TARGET [TARGET...]`
+[Makefile](https://www.gnu.org/software/make/manual/make.html#Overview) system is used for building.
+
+```
+make TARGET [TARGET...]
+```
 
 | Target  | Description |
 | ------------- | ------------- |
