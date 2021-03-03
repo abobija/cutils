@@ -38,15 +38,24 @@ bool estr_ew(const char* str1, const char* str2) {
 	if(len1 == 0)
 		return false;
 
-	int diff = len1 - strlen(str2);
+    size_t len2 = strlen(str2);
     
-	if(diff < 0 || diff == len1) // str2 is bigger or empty
+	if(len2 > len1 || len2 == 0) // str2 is bigger or empty
 		return false;
 	
-	int i = len1 - 1;
-	for(; (i - diff) >= 0 && str1[i] == str2[i - diff]; i--);
+    size_t diff = len1 - len2;
 
-	return i < diff;
+    if(diff == 0) {
+        return estr_eq(str1, str2);
+    }
+    
+	for(size_t i = len2, j = len1; i > 0; i--, j--) {
+        if(str2[i - 1] != str1[j - 1]) {
+            return false;
+        }
+    }
+
+	return true;
 }
 
 bool estrn_is_digit_only(const char* str, size_t n) {
@@ -65,8 +74,9 @@ bool estrn_is_digit_only(const char* str, size_t n) {
 }
 
 size_t estrn_chrcnt(const char* str, char chr, size_t n) {
-    if(!str)
+    if(!str) {
         return 0;
+    }
     
 	size_t cnt = 0;
     size_t len = strlen(str);
@@ -236,7 +246,7 @@ char* estr_rep(const char *orig, const char *rep, const char *with) {
 
     // count the number of replacements needed
     ins = (char*) orig;
-    for (count = 0; tmp = strstr(ins, rep); ++count) {
+    for (count = 0; (tmp = strstr(ins, rep)); ++count) {
         ins = tmp + len_rep;
     }
 

@@ -2,7 +2,7 @@
 #include "../cutils.h"
 #include <assert.h>
 
-static void test_estreq() {
+static void test_estr_eq() {
     assert( estr_eq("a", "a"));
     assert( estr_eq(" ", " "));
     assert( estr_eq("", ""));
@@ -12,7 +12,7 @@ static void test_estreq() {
     assert(!estr_eq(NULL, NULL));
 }
 
-static void test_estrneq() {
+static void test_estrn_eq() {
     assert( estrn_eq("a", "a", 1));
     assert( estrn_eq("a", "ab", 1));
     assert( estrn_eq(" ", " ",1));
@@ -24,7 +24,7 @@ static void test_estrneq() {
     assert(!estrn_eq(NULL, NULL, 0));
 }
 
-static void test_estrsw() {
+static void test_estr_sw() {
     assert( estr_sw("+react", "+react"));
     assert( estr_sw("+react to this", "+react"));
     assert(!estr_sw("+react", "+react to this"));
@@ -38,7 +38,7 @@ static void test_estrsw() {
     assert(!estr_sw("  ", "+react"));
 }
 
-static void test_custrew() {
+static void test_estr_ew() {
     assert( estr_ew("+react", "+react"));
     assert( estr_ew("+react", "ct"));
     assert( estr_ew("a", "a"));
@@ -72,7 +72,7 @@ static void test_estrn_chrcnt() {
     assert(estrn_chrcnt(".34.f.s.", '.', 5) == 2);
 }
 
-static void test_estrsplit() {
+static void test_estr_split() {
     char** _pcs;
     size_t _len;
 
@@ -130,7 +130,7 @@ static void test_estrsplit() {
     cu_list_free(_pcs, _len);
 }
 
-static void test_estrcat() {
+static void test_estr_cat() {
     char* res;
     
     res = estr_cat("a", "b", "c");
@@ -154,7 +154,7 @@ static void test_estr_url_encode() {
     free(res);
 }
 
-static void test_estrrep() {
+static void test_estr_rep() {
     char* tmp;
     tmp = estr_rep("aaabbbccc", "bbb", "ddd");
     assert(estr_eq(tmp, "aaadddccc"));
@@ -174,15 +174,16 @@ static void test_estrrep() {
 }
 
 int main() {
-    test_estreq();
-    test_estrneq();
-    test_estrsw();
+    test_estr_eq();
+    test_estrn_eq();
+    test_estr_sw();
+    test_estr_ew();
     test_estrn_is_digit_only();
     test_estrn_chrcnt();
-    test_estrsplit();
-    test_estrcat();
+    test_estr_split();
+    test_estr_cat();
     test_estr_url_encode();
-    test_estrrep();
+    test_estr_rep();
 
     return 0;
 }
