@@ -3,55 +3,55 @@
 #include <assert.h>
 
 static void test_estreq() {
-    assert( estreq("a", "a"));
-    assert( estreq(" ", " "));
-    assert( estreq("", ""));
-    assert(!estreq(" ", ""));
-    assert(!estreq(NULL, "b"));
-    assert(!estreq("a", NULL));
-    assert(!estreq(NULL, NULL));
+    assert( estr_eq("a", "a"));
+    assert( estr_eq(" ", " "));
+    assert( estr_eq("", ""));
+    assert(!estr_eq(" ", ""));
+    assert(!estr_eq(NULL, "b"));
+    assert(!estr_eq("a", NULL));
+    assert(!estr_eq(NULL, NULL));
 }
 
 static void test_estrneq() {
-    assert( estrneq("a", "a", 1));
-    assert( estrneq("a", "ab", 1));
-    assert( estrneq(" ", " ",1));
-    assert( estrneq("", "", 0));
-    assert( estrneq("", "", 1));
-    assert(!estrneq(" ", "", 1));
-    assert(!estrneq(NULL, "b", 1));
-    assert(!estrneq("a", NULL, 1));
-    assert(!estrneq(NULL, NULL, 0));
+    assert( estrn_eq("a", "a", 1));
+    assert( estrn_eq("a", "ab", 1));
+    assert( estrn_eq(" ", " ",1));
+    assert( estrn_eq("", "", 0));
+    assert( estrn_eq("", "", 1));
+    assert(!estrn_eq(" ", "", 1));
+    assert(!estrn_eq(NULL, "b", 1));
+    assert(!estrn_eq("a", NULL, 1));
+    assert(!estrn_eq(NULL, NULL, 0));
 }
 
 static void test_estrsw() {
-    assert( estrsw("+react", "+react"));
-    assert( estrsw("+react to this", "+react"));
-    assert(!estrsw("+react", "+react to this"));
-    assert(!estrsw(NULL, "+react"));
-    assert(!estrsw("+react", NULL));
-    assert(!estrsw(NULL, NULL));
-    assert(!estrsw("", "+react"));
-    assert(!estrsw("+react", ""));
-    assert(!estrsw("", ""));
-    assert(!estrsw("+react", "   "));
-    assert(!estrsw("  ", "+react"));
+    assert( estr_sw("+react", "+react"));
+    assert( estr_sw("+react to this", "+react"));
+    assert(!estr_sw("+react", "+react to this"));
+    assert(!estr_sw(NULL, "+react"));
+    assert(!estr_sw("+react", NULL));
+    assert(!estr_sw(NULL, NULL));
+    assert(!estr_sw("", "+react"));
+    assert(!estr_sw("+react", ""));
+    assert(!estr_sw("", ""));
+    assert(!estr_sw("+react", "   "));
+    assert(!estr_sw("  ", "+react"));
 }
 
 static void test_custrew() {
-    assert( estrew("+react", "+react"));
-    assert( estrew("+react", "ct"));
-    assert( estrew("a", "a"));
-    assert( estrew("abcd", "cd"));
-    assert(!estrew("+react", "this to +react"));
-    assert(!estrew(NULL, "+react"));
-    assert(!estrew("+react", NULL));
-    assert(!estrew(NULL, NULL));
-    assert(!estrew("", "+react"));
-    assert(!estrew("+react", ""));
-    assert(!estrew("", ""));
-    assert(!estrew("+react", "   "));
-    assert(!estrew("  ", "+react"));
+    assert( estr_ew("+react", "+react"));
+    assert( estr_ew("+react", "ct"));
+    assert( estr_ew("a", "a"));
+    assert( estr_ew("abcd", "cd"));
+    assert(!estr_ew("+react", "this to +react"));
+    assert(!estr_ew(NULL, "+react"));
+    assert(!estr_ew("+react", NULL));
+    assert(!estr_ew(NULL, NULL));
+    assert(!estr_ew("", "+react"));
+    assert(!estr_ew("+react", ""));
+    assert(!estr_ew("", ""));
+    assert(!estr_ew("+react", "   "));
+    assert(!estr_ew("  ", "+react"));
 }
 
 static void test_estrn_is_digit_only() {
@@ -76,73 +76,73 @@ static void test_estrsplit() {
     char** _pcs;
     size_t _len;
 
-    _pcs = estrsplit("a,b,,c", ',', &_len);
+    _pcs = estr_split("a,b,,c", ',', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 1 && strlen(_pcs[1]) == 1 && strlen(_pcs[2]) == 1 && 
-        estreq(_pcs[0], "a") && estreq(_pcs[1], "b") && estreq(_pcs[2], "c")
+        estr_eq(_pcs[0], "a") && estr_eq(_pcs[1], "b") && estr_eq(_pcs[2], "c")
     );
-    culist_free(_pcs, _len);
+    cu_list_free(_pcs, _len);
 
-    _pcs = estrsplit(",,d", ',', &_len);
+    _pcs = estr_split(",,d", ',', &_len);
     assert(_len == 1);
-    assert(strlen(_pcs[0]) == 1 && estreq(_pcs[0], "d"));
-    culist_free(_pcs, _len);
+    assert(strlen(_pcs[0]) == 1 && estr_eq(_pcs[0], "d"));
+    cu_list_free(_pcs, _len);
 
-    _pcs = estrsplit("a,,bc,d,,", ',', &_len);
+    _pcs = estr_split("a,,bc,d,,", ',', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 1 && strlen(_pcs[1]) == 2 && strlen(_pcs[2]) == 1 && 
-        estreq(_pcs[0], "a") && estreq(_pcs[1], "bc") && estreq(_pcs[2], "d")
+        estr_eq(_pcs[0], "a") && estr_eq(_pcs[1], "bc") && estr_eq(_pcs[2], "d")
     );
-    culist_free(_pcs, _len);
+    cu_list_free(_pcs, _len);
 
-    _pcs = estrsplit("da", ',', &_len);
-    assert(_len == 1 && estreq(_pcs[0], "da"));
-    culist_free(_pcs, _len);
+    _pcs = estr_split("da", ',', &_len);
+    assert(_len == 1 && estr_eq(_pcs[0], "da"));
+    cu_list_free(_pcs, _len);
 
-    _pcs = estrsplit("d,", ',', &_len);
+    _pcs = estr_split("d,", ',', &_len);
     assert(_len == 1);
-    assert(strlen(_pcs[0]) == 1 && estreq(_pcs[0], "d"));
-    culist_free(_pcs, _len);
+    assert(strlen(_pcs[0]) == 1 && estr_eq(_pcs[0], "d"));
+    cu_list_free(_pcs, _len);
 
-    _pcs = estrsplit("jan.feb.mar", '.', &_len);
+    _pcs = estr_split("jan.feb.mar", '.', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 3 && strlen(_pcs[1]) == 3 && strlen(_pcs[2]) == 3 && 
-        estreq(_pcs[0], "jan") && estreq(_pcs[1], "feb") && estreq(_pcs[2], "mar")
+        estr_eq(_pcs[0], "jan") && estr_eq(_pcs[1], "feb") && estr_eq(_pcs[2], "mar")
     );
-    culist_free(_pcs, _len);
+    cu_list_free(_pcs, _len);
 
-    _pcs = estrsplit("..jan..feb..mar..", '.', &_len);
+    _pcs = estr_split("..jan..feb..mar..", '.', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 3 && strlen(_pcs[1]) == 3 && strlen(_pcs[2]) == 3 && 
-        estreq(_pcs[0], "jan") && estreq(_pcs[1], "feb") && estreq(_pcs[2], "mar")
+        estr_eq(_pcs[0], "jan") && estr_eq(_pcs[1], "feb") && estr_eq(_pcs[2], "mar")
     );
-    culist_free(_pcs, _len);
+    cu_list_free(_pcs, _len);
 
-    _pcs = estrsplit("......", '.', &_len);
+    _pcs = estr_split("......", '.', &_len);
     assert(_len == 0 && !_pcs);
-    culist_free(_pcs, _len);
+    cu_list_free(_pcs, _len);
 
-    _pcs = estrsplit("     a     bc  d    ", ' ', &_len);
+    _pcs = estr_split("     a     bc  d    ", ' ', &_len);
     assert(_len == 3);
     assert(strlen(_pcs[0]) == 1 && strlen(_pcs[1]) == 2 && strlen(_pcs[2]) == 1 && 
-        estreq(_pcs[0], "a") && estreq(_pcs[1], "bc") && estreq(_pcs[2], "d")
+        estr_eq(_pcs[0], "a") && estr_eq(_pcs[1], "bc") && estr_eq(_pcs[2], "d")
     );
-    culist_free(_pcs, _len);
+    cu_list_free(_pcs, _len);
 }
 
 static void test_estrcat() {
     char* res;
     
-    res = estrcat("a", "b", "c");
-    assert(estreq(res, "abc"));
+    res = estr_cat("a", "b", "c");
+    assert(estr_eq(res, "abc"));
     free(res);
 
-    res = estrcat("", "b", " ");
-    assert(estreq(res, "b "));
+    res = estr_cat("", "b", " ");
+    assert(estr_eq(res, "b "));
     free(res);
 
-    res = estrcat("a", "b", NULL, "c"); // c will be ignored
-    assert(estreq(res, "ab"));
+    res = estr_cat("a", "b", NULL, "c"); // c will be ignored
+    assert(estr_eq(res, "ab"));
     free(res);
 }
 
@@ -150,26 +150,26 @@ static void test_estr_url_encode() {
     char* res;
 
     res = estr_url_encode("👍");
-    assert(estreq(res, "%f0%9f%91%8d"));
+    assert(estr_eq(res, "%f0%9f%91%8d"));
     free(res);
 }
 
 static void test_estrrep() {
     char* tmp;
-    tmp = estrrep("aaabbbccc", "bbb", "ddd");
-    assert(estreq(tmp, "aaadddccc"));
+    tmp = estr_rep("aaabbbccc", "bbb", "ddd");
+    assert(estr_eq(tmp, "aaadddccc"));
     free(tmp);
-    tmp = estrrep("aaa\\\"x\\\"d", "\\\"", "\""); // aaa\"x\"d -> aaa"x"d
-    assert(estreq(tmp, "aaa\"x\"d"));
+    tmp = estr_rep("aaa\\\"x\\\"d", "\\\"", "\""); // aaa\"x\"d -> aaa"x"d
+    assert(estr_eq(tmp, "aaa\"x\"d"));
     free(tmp);
-    tmp = estrrep("abc", "d", "x");
-    assert(estreq(tmp, "abc"));
+    tmp = estr_rep("abc", "d", "x");
+    assert(estr_eq(tmp, "abc"));
     free(tmp);
-    tmp = estrrep(NULL, "b", "x");
+    tmp = estr_rep(NULL, "b", "x");
     assert(!tmp);
-    tmp = estrrep("abc", NULL, "x");
+    tmp = estr_rep("abc", NULL, "x");
     assert(!tmp);
-    tmp = estrrep("abc", "b", NULL);
+    tmp = estr_rep("abc", "b", NULL);
     assert(!tmp);
 }
 

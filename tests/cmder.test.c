@@ -26,14 +26,14 @@ void echo_cb(cmder_cmd_val_t* cmdval) {
     assert(cmdval->opts);
     assert(cmdval->opts_len == 1);
     cmder_opt_val_t* optval;
-    assert(optval = cmder_opt_val('m', cmdval));
+    assert(optval = cmder_get_optval(cmdval, 'm'));
     assert(optval->val);
     assert(!optval->state);
     assert(optval->opt->is_arg);
     assert(!optval->opt->is_optional);
     assert(optval->opt->name == 'm');
     echo_message = strdup(optval->val);
-    assert(! cmder_opt_val('x', cmdval));
+    assert(! cmder_get_optval(cmdval, 'x'));
 }
 
 void ok_cb(cmder_cmd_val_t* cmdval) {
@@ -45,10 +45,10 @@ void ok_cb(cmder_cmd_val_t* cmdval) {
 void null_cb(cmder_cmd_val_t* cmdval) { /* noop */ }
 
 static void test_getoopts(cmder_handle_t cmder);
-static void test_argv();
+static void test_args();
 
 int main() {
-    test_argv();
+    test_args();
 
     cmder_handle_t cmder = cmder_create(&(cmder_t){
         .name = "+esp32",
@@ -59,39 +59,39 @@ int main() {
 
     test_getoopts(cmder);
 
-    assert(cmder_cmd(cmder, &(cmder_cmd_t){
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){
         .name = "help",
         .callback = &help_cb
     }, NULL) == CU_OK);
 
     cmder_cmd_handle_t echo;
     
-    assert(cmder_cmd(cmder, &(cmder_cmd_t){
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){
         .name = "echo",
         .callback = &echo_cb
     }, &echo) == CU_OK);
 
     assert(echo);
 
-    assert(cmder_opt(echo, &(cmder_opt_t){
+    assert(cmder_add_opt(echo, &(cmder_opt_t){
         .name = 'm',
         .is_arg = true
     }) == 0);
 
-    assert(cmder_cmd(cmder, &(cmder_cmd_t){ 
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ 
         .name = "ok",
         .callback = &ok_cb
     }, &ok) == CU_OK);
 
-    assert(cmder_cmd(cmder, &(cmder_cmd_t){
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){
         .name = "help",
         .callback = &help_cb
     }, NULL) == CU_ERR_CMDER_CMD_EXIST); // already exist
 
-    assert(cmder_opt(echo, &(cmder_opt_t){ .name = 'm' }) == CU_ERR_CMDER_OPT_EXIST); // already exist
+    assert(cmder_add_opt(echo, &(cmder_opt_t){ .name = 'm' }) == CU_ERR_CMDER_OPT_EXIST); // already exist
 
     // no callback provided
-    assert(cmder_cmd(cmder, &(cmder_cmd_t){ .name = "kkk" }, NULL) == CU_ERR_INVALID_ARG);
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "kkk" }, NULL) == CU_ERR_INVALID_ARG);
 
     assert(cmder_run(cmder, "+") != CU_OK); // wrong cmder name
     assert(cmder_run(cmder, "esp32") != CU_OK); // wrong cmder name
@@ -107,13 +107,13 @@ int main() {
     assert(cmder_run(cmder, "+esp32 echo -m hey") == CU_OK); // ok
     assert(echo_fired);
     echo_fired = false;
-    assert(estreq(echo_message, "hey"));
+    assert(estr_eq(echo_message, "hey"));
     free(echo_message);
     echo_message = NULL;
     echo_fired = false;
     assert(cmder_run(cmder, "+esp32 echo -m whats up") == CU_OK); // ok, "up" extra arg
     assert(echo_fired);
-    assert(estreq(echo_message, "whats"));
+    assert(estr_eq(echo_message, "whats"));
     free(echo_message);
     echo_message = NULL;
     echo_fired = false;
@@ -139,14 +139,14 @@ int main() {
     echo_fired = false;
     assert(cmder_run(cmder, "+esp32 echo -m \"whats up\"") == CU_OK); // ok
     assert(echo_fired);
-    assert(estreq(echo_message, "whats up"));
+    assert(estr_eq(echo_message, "whats up"));
     free(echo_message);
     echo_message = NULL;
 
     echo_fired = false;
     assert(cmder_run(cmder, "+esp32 echo -m \"this is \\\"quoted\\\" word\"") == CU_OK); // ok
     assert(echo_fired);
-    assert(estreq(echo_message, "this is \"quoted\" word"));
+    assert(estr_eq(echo_message, "this is \"quoted\" word"));
     free(echo_message);
     echo_message = NULL;
 
@@ -160,71 +160,71 @@ static void test_getoopts(cmder_handle_t cmder) {
     char* tmp;
 
     cmder_cmd_handle_t cmplx;
-    assert(cmder_cmd(cmder, &(cmder_cmd_t){ .name = "c1", .callback = &null_cb }, &cmplx) == CU_OK);
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "c1", .callback = &null_cb }, &cmplx) == CU_OK);
     assert(cmplx);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'a' }) == CU_OK);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'b', .is_arg = true }) == CU_OK);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'c', .is_arg = true, .is_optional = true }) == CU_OK);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'd' }) == CU_OK);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'e', .is_arg = true, .is_optional = true }) == CU_OK);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'f', .is_arg = true }) == CU_OK);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'g' }) == CU_OK);
-    assert(cmder_opt(cmplx, &(cmder_opt_t){ .name = 'h' }) == CU_OK);
+    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'a' }) == CU_OK);
+    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'b', .is_arg = true }) == CU_OK);
+    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'c', .is_arg = true, .is_optional = true }) == CU_OK);
+    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'd' }) == CU_OK);
+    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'e', .is_arg = true, .is_optional = true }) == CU_OK);
+    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'f', .is_arg = true }) == CU_OK);
+    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'g' }) == CU_OK);
+    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'h' }) == CU_OK);
     assert(tmp = cmder_getoopts(cmplx));
-    assert(estreq(tmp, ":ab:c::de::f:gh"));
+    assert(estr_eq(tmp, ":ab:c::de::f:gh"));
     free(tmp);
 }
 
-static void test_argv() {
+static void test_args() {
     int argc;
     char** argv;
-    argv = cmder_argv("test a b c", &argc);
+    argv = cmder_args("test a b c", &argc);
     assert(argc == 4);
-    assert(argv && estreq(argv[0], "test") && estreq(argv[1], "a") && 
-        estreq(argv[2], "b") && estreq(argv[3], "c"));
-    culist_free(argv, argc);
-    argv = cmder_argv("test ab \"c d\" e", &argc);
+    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
+        estr_eq(argv[2], "b") && estr_eq(argv[3], "c"));
+    cu_list_free(argv, argc);
+    argv = cmder_args("test ab \"c d\" e", &argc);
     assert(argc == 4);
-    assert(argv && estreq(argv[0], "test") && estreq(argv[1], "ab") &&
-        estreq(argv[2], "c d") && estreq(argv[3], "e"));
-    culist_free(argv, argc);
-    argv = cmder_argv("test a \"b c\"    \"\"   d", &argc);
+    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "ab") &&
+        estr_eq(argv[2], "c d") && estr_eq(argv[3], "e"));
+    cu_list_free(argv, argc);
+    argv = cmder_args("test a \"b c\"    \"\"   d", &argc);
     assert(argc == 4);
-    assert(argv && estreq(argv[0], "test") && estreq(argv[1], "a") && 
-        estreq(argv[2], "b c") && estreq(argv[3], "d"));
-    culist_free(argv, argc);
-    argv = cmder_argv("  \" a   b c \"  d e \"f\" ", &argc);
+    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
+        estr_eq(argv[2], "b c") && estr_eq(argv[3], "d"));
+    cu_list_free(argv, argc);
+    argv = cmder_args("  \" a   b c \"  d e \"f\" ", &argc);
     assert(argc == 4);
-    assert(argv && estreq(argv[0], " a   b c ") && 
-        estreq(argv[1], "d") && estreq(argv[2], "e") && estreq(argv[3], "f"));
-    culist_free(argv, argc);
-    argv = cmder_argv("ab \"", &argc);
+    assert(argv && estr_eq(argv[0], " a   b c ") && 
+        estr_eq(argv[1], "d") && estr_eq(argv[2], "e") && estr_eq(argv[3], "f"));
+    cu_list_free(argv, argc);
+    argv = cmder_args("ab \"", &argc);
     assert(!argv && argc == 0); // syntax error
-    argv = cmder_argv("test a \"b c\"    \"\"   d \"\"", &argc);
+    argv = cmder_args("test a \"b c\"    \"\"   d \"\"", &argc);
     assert(argc == 4);
-    assert(argv && estreq(argv[0], "test") && estreq(argv[1], "a") && 
-        estreq(argv[2], "b c") && estreq(argv[3], "d"));
-    culist_free(argv, argc);
-    argv = cmder_argv("test a \"b c\"    \"\"   d \"x\"", &argc);
+    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
+        estr_eq(argv[2], "b c") && estr_eq(argv[3], "d"));
+    cu_list_free(argv, argc);
+    argv = cmder_args("test a \"b c\"    \"\"   d \"x\"", &argc);
     assert(argc == 5);
-    assert(argv && estreq(argv[0], "test") && estreq(argv[1], "a") && 
-        estreq(argv[2], "b c") && estreq(argv[3], "d") && estreq(argv[4], "x"));
-    culist_free(argv, argc);
-    argv = cmder_argv("\"\"   test a \"b c\"    \"\"   \"d\"  ", &argc);
+    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
+        estr_eq(argv[2], "b c") && estr_eq(argv[3], "d") && estr_eq(argv[4], "x"));
+    cu_list_free(argv, argc);
+    argv = cmder_args("\"\"   test a \"b c\"    \"\"   \"d\"  ", &argc);
     assert(argc == 4);
-    assert(argv && estreq(argv[0], "test") && estreq(argv[1], "a") && 
-        estreq(argv[2], "b c") && estreq(argv[3], "d"));
-    culist_free(argv, argc);
-    argv = cmder_argv("a \"b \\\"c\\\" d\"", &argc); // a "b \"c\" d"
+    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
+        estr_eq(argv[2], "b c") && estr_eq(argv[3], "d"));
+    cu_list_free(argv, argc);
+    argv = cmder_args("a \"b \\\"c\\\" d\"", &argc); // a "b \"c\" d"
     assert(argc == 2);
-    assert(argv && estreq(argv[0], "a") && estreq(argv[1], "b \"c\" d"));
-    culist_free(argv, argc);
-    argv = cmder_argv("a \\\"c\\\"", &argc); // a \"c\"
+    assert(argv && estr_eq(argv[0], "a") && estr_eq(argv[1], "b \"c\" d"));
+    cu_list_free(argv, argc);
+    argv = cmder_args("a \\\"c\\\"", &argc); // a \"c\"
     assert(argc == 2);
-    assert(argv && estreq(argv[0], "a") && estreq(argv[1], "\"c\""));
-    culist_free(argv, argc);
-    argv = cmder_argv("\\\"a\\\" b", &argc); // \"a\" b
+    assert(argv && estr_eq(argv[0], "a") && estr_eq(argv[1], "\"c\""));
+    cu_list_free(argv, argc);
+    argv = cmder_args("\\\"a\\\" b", &argc); // \"a\" b
     assert(argc == 2);
-    assert(argv && estreq(argv[0], "\"a\"") && estreq(argv[1], "b"));
-    culist_free(argv, argc);
+    assert(argv && estr_eq(argv[0], "\"a\"") && estr_eq(argv[1], "b"));
+    cu_list_free(argv, argc);
 }

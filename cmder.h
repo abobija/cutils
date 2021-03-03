@@ -65,11 +65,13 @@ typedef struct {
 
 cmder_handle_t cmder_create(cmder_t* config);
 char* cmder_getoopts(cmder_cmd_handle_t cmd);
-char** cmder_argv(const char* cmdline, int* argc);
-cu_err_t cmder_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_t* out_cmd);
-cu_err_t cmder_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt);
+char** cmder_args(const char* cmdline, int* argc);
+cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_t* out_cmd);
+cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt);
+cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv);
 cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline);
-cmder_opt_val_t* cmder_opt_val(char optname, cmder_cmd_val_t* cmdval);
+cmder_cmd_handle_t cmder_get_cmd_by_name(cmder_handle_t cmder, const char* cmd_name);
+cmder_opt_val_t* cmder_get_optval(cmder_cmd_val_t* cmdval, char optname);
 void cmder_destroy(cmder_handle_t cmder);
 
 #ifdef __cplusplus

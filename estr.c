@@ -4,21 +4,21 @@
 #include <stdarg.h>
 #include <ctype.h>
 
-bool estreq(const char* str1, const char* str2) {
+bool estr_eq(const char* str1, const char* str2) {
     if(!str1 || !str2)
         return false;
     
     return strcmp(str1, str2) == 0;
 }
 
-bool estrneq(const char* str1, const char* str2, size_t n) {
+bool estrn_eq(const char* str1, const char* str2, size_t n) {
     if(!str1 || !str2)
         return false;
     
     return strncmp(str1, str2, n) == 0;
 }
 
-bool estrsw(const char* str1, const char* str2) {
+bool estr_sw(const char* str1, const char* str2) {
     if(!str1 || !str2) {
         return false;
     }
@@ -29,7 +29,7 @@ bool estrsw(const char* str1, const char* str2) {
     return i > 0 && !str2[i];
 }
 
-bool estrew(const char* str1, const char* str2) {
+bool estr_ew(const char* str1, const char* str2) {
 	if(!str1 || !str2)
 		return false;
 	
@@ -80,7 +80,7 @@ size_t estrn_chrcnt(const char* str, char chr, size_t n) {
 	return cnt;
 }
 
-char** estrsplit(const char* str, const char chr, size_t* out_len) {
+char** estr_split(const char* str, const char chr, size_t* out_len) {
     if(!str || !out_len)
         return NULL;
 
@@ -125,7 +125,8 @@ char** estrsplit(const char* str, const char chr, size_t* out_len) {
             size_t piece_len = (offset_one ? ptr + 1 : ptr) - start;
             result[i] = malloc(piece_len + 1);
             if(!result[i]) {
-                culist_free(result, i + 1);
+                size_t tmp = i + 1;
+                cu_list_free(result, tmp);
                 *out_len = 0;
                 return NULL;
             }
@@ -141,7 +142,7 @@ char** estrsplit(const char* str, const char chr, size_t* out_len) {
     return result;
 }
 
-char* _estrcat(const char* str, ...) {
+char* _estr_cat(const char* str, ...) {
     const char* first = str;
     size_t length = 0;
     va_list count;
@@ -212,7 +213,7 @@ char* estr_url_encode(const char* str) {
     return buf;
 }
 
-char* estrrep(const char *orig, const char *rep, const char *with) {
+char* estr_rep(const char *orig, const char *rep, const char *with) {
     // Taken from: https://stackoverflow.com/a/779960
     // It's a little bit modified
 

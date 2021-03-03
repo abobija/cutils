@@ -18,7 +18,7 @@ typedef int cu_err_t;
  * @param ... Struct attributes (ex: .id = 2, .name = strdup("John"))
  * @return Pointer to dynamically allocated struct
  */
-#define cuctor(type, ...) ({ type* obj = calloc(1, sizeof(type)); if(obj) { *obj = (type){ __VA_ARGS__ }; } obj; })
+#define cu_ctor(type, ...) ({ type* obj = calloc(1, sizeof(type)); if(obj) { *obj = (type){ __VA_ARGS__ }; } obj; })
 
 /**
  * @brief Universal handle constructor. User is responsible for freeing the resulting object
@@ -27,7 +27,7 @@ typedef int cu_err_t;
  * @param ... Struct attributes (ex: .id = 2, .name = strdup("John"))
  * @return Pointer to dynamically allocated struct
  */
-#define cuctor2(handle_type, struct, ...) ({ handle_type obj = calloc(1, sizeof(struct)); if(obj) { *obj = (struct){ __VA_ARGS__ }; } obj; })
+#define cu_ctor2(handle_type, struct, ...) ({ handle_type obj = calloc(1, sizeof(struct)); if(obj) { *obj = (struct){ __VA_ARGS__ }; } obj; })
 
 /**
  * @brief Free the list (array of pointers)
@@ -36,17 +36,17 @@ typedef int cu_err_t;
  * @param item_free_fnc Function for freeing the list item
  * @return void
  */
-#define culist_free_(list, len, item_free_fnc) \
+#define cu_list_free_(list, len, item_free_fnc) \
     ({ for(size_t i = 0; i < len; i++) { item_free_fnc(list[i]); list[i] = NULL; } free(list); list = NULL; len = 0; })
 
 /**
  * @brief Free the list (array of pointers). For the freeing the list items free() will be used.
- *        If you want to use custom function for freeing list items, please use culist_free_ instead.
+ *        If you want to use custom function for freeing list items, please use cu_list_free_ instead.
  * @param list Double pointer to list
  * @param len Number of the items in the list
  * @return void
  */
-#define culist_free(list, len) culist_free_(list, len, free)
+#define cu_list_free(list, len) cu_list_free_(list, len, free)
 
 #ifdef __cplusplus
 }

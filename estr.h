@@ -14,7 +14,7 @@ extern "C" {
  *        Make sure that no one of the strings are NULL, otherwise concatenation will stop on the first NULL.
  * @return Pointer to result string or NULL on failure (no memory)
  */
-#define estrcat(...) _estrcat(__VA_ARGS__, NULL)
+#define estr_cat(...) _estr_cat(__VA_ARGS__, NULL)
 
 /**
  * @brief Check if two strings are equal
@@ -22,8 +22,16 @@ extern "C" {
  * @param str2 Second string
  * @return true if first and second strings are equal
  */
-bool estreq(const char* str1, const char* str2);
-bool estrneq(const char* str1, const char* str2, size_t n);
+bool estr_eq(const char* str1, const char* str2);
+
+/**
+ * @brief Check if two strings are equal
+ * @param str1 First string
+ * @param str2 Second string
+ * @param n Number of character that needs to be tested
+ * @return true if first and second strings are equal
+ */
+bool estrn_eq(const char* str1, const char* str2, size_t n);
 
 /**
  * @brief Check if one string starts with another
@@ -32,7 +40,7 @@ bool estrneq(const char* str1, const char* str2, size_t n);
  * @return true if first string starts with second one.
  *         In special cases when second or both strings are empty, function will return false
  */
-bool estrsw(const char* str1, const char* str2);
+bool estr_sw(const char* str1, const char* str2);
 
 /**
  * @brief Check if one string ends with another
@@ -41,15 +49,38 @@ bool estrsw(const char* str1, const char* str2);
  * @return true if first string ends with second one.
  *         In special cases when second or both strings are empty, function will return false
  */
-bool estrew(const char* str1, const char* str2);
-bool estrn_is_digit_only(const char* str, size_t n);
-size_t estrn_chrcnt(const char* str, char chr, size_t n);
-char** estrsplit(const char* str, const char chr, size_t* out_len);
+bool estr_ew(const char* str1, const char* str2);
 
 /**
- * @brief Don't use this function. Use estrcat macro instead.
+ * @brief Check if all characters in string are digits
+ * @param str Haystack
+ * @param n Number of characters that needs to be tested
+ * @return true if all characters are digits
  */
-char* _estrcat(const char* str, ...);
+bool estrn_is_digit_only(const char* str, size_t n);
+
+/**
+ * @brief Count number of occurences of character in string
+ * @param str Haystack
+ * @param chr Character that's gonna be counted
+ * @param n Number of string characters that needs to be tested
+ * @return Number of character occurences
+ */
+size_t estrn_chrcnt(const char* str, char chr, size_t n);
+
+/**
+ * @brief Split string using character. Resulting list needs to be freed (cu_list_free can be used)
+ * @param str String that is gonna be used for splitting
+ * @param chr Character around which string is be splitted
+ * @param out_len Pointer to outer variable in which be stored length of resulting list
+ * @return List of strings after splitting
+ */
+char** estr_split(const char* str, const char chr, size_t* out_len);
+
+/**
+ * @brief Don't use this function. Use estr_cat macro instead.
+ */
+char* _estr_cat(const char* str, ...);
 
 /**
  * @brief Http url string encoding.
@@ -66,7 +97,7 @@ char* estr_url_encode(const char* str);
  * @param with Replacement for rep
  * @return Pointer to result or NULL on failure
  */
-char* estrrep(const char* orig, const char* rep, const char* with);
+char* estr_rep(const char* orig, const char* rep, const char* with);
 
 #ifdef __cplusplus
 }
