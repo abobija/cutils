@@ -54,6 +54,8 @@ typedef struct {
     void* context;
     cmder_opt_val_t** opts;
     size_t opts_len;
+    char** extra_args;
+    size_t extra_args_len;
 } cmder_cmd_val_t;
 
 typedef void(*cmder_callback_t)(cmder_cmd_val_t* cmdval);

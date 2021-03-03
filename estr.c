@@ -125,8 +125,8 @@ char** estr_split(const char* str, const char chr, size_t* out_len) {
             size_t piece_len = (offset_one ? ptr + 1 : ptr) - start;
             result[i] = malloc(piece_len + 1);
             if(!result[i]) {
-                size_t tmp = i + 1;
-                cu_list_free(result, tmp);
+                size_t _tmp = i + 1;
+                cu_list_free(result, _tmp);
                 *out_len = 0;
                 return NULL;
             }

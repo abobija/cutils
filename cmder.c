@@ -308,6 +308,8 @@ static void _cmdval_free(cmder_cmd_val_t* cmdval) {
     cmdval->cmder = NULL;
     cmdval->context = NULL;
     cu_list_free_(cmdval->opts, cmdval->opts_len, _optval_free);
+    cmdval->extra_args = NULL;
+    cmdval->extra_args_len = 0;
     free(cmdval);
 }
 
@@ -394,8 +396,17 @@ cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv) {
 
     if(err == CU_OK) {
         if(_mandatory_opts_are_set(cmdval->opts, cmdval->opts_len)) {
-            for(; optind < argc; optind++) {
-                printf("cmd %s has extra argument: %s\n", cmd->name, argv[optind]);
+            cmdval->extra_args_len = 0;
+            for(int i = optind; i < argc; i++, cmdval->extra_args_len++);
+
+            if(cmdval->extra_args_len > 0) {
+                cmdval->extra_args = calloc(cmdval->extra_args_len, sizeof(char*));
+
+                // memcheck?
+
+                for(int i = optind, j = 0; i < argc; i++, j++) {
+                    cmdval->extra_args[j] = argv[i];
+                }
             }
 
             cmd->callback(cmdval);

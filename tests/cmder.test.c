@@ -20,6 +20,10 @@ void help_cb(cmder_cmd_val_t* cmdval) {
     assert(*ctx == 1337);
 }
 
+static bool capture_extra_arg0 = false;
+static int echo_extra_args_len = 0;
+static char* echo_extra_arg0;
+
 void echo_cb(cmder_cmd_val_t* cmdval) {
     echo_fired = true;
     assert(cmdval->cmder);
@@ -34,6 +38,10 @@ void echo_cb(cmder_cmd_val_t* cmdval) {
     assert(optval->opt->name == 'm');
     echo_message = strdup(optval->val);
     assert(! cmder_get_optval(cmdval, 'x'));
+    echo_extra_args_len = cmdval->extra_args_len;
+    if(cmdval->extra_args_len > 0 && capture_extra_arg0) {
+        echo_extra_arg0 = strdup(cmdval->extra_args[0]);
+    }
 }
 
 void ok_cb(cmder_cmd_val_t* cmdval) {
@@ -111,9 +119,16 @@ int main() {
     free(echo_message);
     echo_message = NULL;
     echo_fired = false;
+    echo_extra_args_len = 0;
+    echo_extra_arg0 = NULL;
+    capture_extra_arg0 = true;
     assert(cmder_run(cmder, "+esp32 echo -m whats up") == CU_OK); // ok, "up" extra arg
     assert(echo_fired);
     assert(estr_eq(echo_message, "whats"));
+    assert(echo_extra_args_len == 1 && echo_extra_arg0);
+    assert(estr_eq(echo_extra_arg0, "up"));
+    free(echo_extra_arg0);
+    echo_extra_args_len = 0;
     free(echo_message);
     echo_message = NULL;
     echo_fired = false;
