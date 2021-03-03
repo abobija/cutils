@@ -7,10 +7,13 @@ extern "C" {
 
 typedef int cu_err_t;
 
-#define CU_OK 0
-#define CU_FAIL -1
-#define CU_ERR_INVALID_ARG -2
-#define CU_ERR_NO_MEM -3
+#define CU_OK                 (0)
+#define CU_FAIL              (-1)
+#define CU_ERR_INVALID_ARG   (-2)
+#define CU_ERR_NO_MEM        (-3)
+#define CU_ERR_SYNTAX_ERROR  (-4)
+#define CU_ERR_NOT_FOUND     (-5)
+#define CU_ERR_EMPTY_STRING  (-6)
 
 /**
  * @brief Universal struct (type) constructor. User is responsible for freeing the resulting object
@@ -41,7 +44,7 @@ typedef int cu_err_t;
  * @return void
  */
 #define cu_list_tfreex(list, len_type, len, item_free_fnc) \
-    ({ for(len_type i = 0; i < len; i++) { item_free_fnc(list[i]); list[i] = NULL; } free(list); list = NULL; len = 0; })
+    ({if(list) { for(len_type i = 0; i < len; i++) { item_free_fnc(list[i]); list[i] = NULL; } free(list); list = NULL; len = 0; }})
 
 /**
  * @brief Free the list (array of pointers) with custom type for the length variable.
