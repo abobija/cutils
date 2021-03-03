@@ -1,6 +1,10 @@
 #ifndef _CMDER_H_
 #define _CMDER_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "cutils.h"
 #include <stdlib.h>
 #include <stdbool.h>
@@ -67,5 +71,9 @@ cu_err_t cmder_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt);
 cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline);
 cmder_opt_val_t* cmder_opt_val(char optname, cmder_cmd_val_t* cmdval);
 void cmder_destroy(cmder_handle_t cmder);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

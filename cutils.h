@@ -1,6 +1,10 @@
 #ifndef _CUTILS_H_
 #define _CUTILS_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef int cu_err_t;
 
 #define CU_OK 0
@@ -43,5 +47,9 @@ typedef int cu_err_t;
  * @return void
  */
 #define culist_free(list, len) culist_free_(list, len, free)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

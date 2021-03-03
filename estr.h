@@ -1,6 +1,10 @@
 #ifndef _CUTILS_STRING_H
 #define _CUTILS_STRING_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,5 +67,9 @@ char* estr_url_encode(const char* str);
  * @return Pointer to result or NULL on failure
  */
 char* estrrep(const char* orig, const char* rep, const char* with);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
