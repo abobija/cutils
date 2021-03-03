@@ -1,5 +1,5 @@
-#ifndef _CUTILS_STRING_H
-#define _CUTILS_STRING_H
+#ifndef _CUTILS_ESTR_H_
+#define _CUTILS_ESTR_H_
 
 #ifdef __cplusplus
 extern "C" {

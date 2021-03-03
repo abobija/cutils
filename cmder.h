@@ -1,5 +1,5 @@
-#ifndef _CMDER_H_
-#define _CMDER_H
+#ifndef _CUTILS_CMDER_H_
+#define _CUTILS_CMDER_H_
 
 #ifdef __cplusplus
 extern "C" {
