@@ -284,6 +284,10 @@ cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_
     return CU_OK;
 }
 
+cu_err_t cmder_add_vcmd(cmder_handle_t cmder, cmder_cmd_t* cmd) {
+    return cmder_add_cmd(cmder, cmd, NULL);
+}
+
 static cmder_opt_handle_t _get_opt_by_name(cmder_cmd_handle_t cmd, char name) {
     if(!cmd)
         return NULL;
@@ -297,7 +301,7 @@ static cmder_opt_handle_t _get_opt_by_name(cmder_cmd_handle_t cmd, char name) {
     return NULL;
 }
 
-cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
+cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handle_t* out_opt) {
     if(!cmd || !cmd->cmder || !opt)
         return CU_ERR_INVALID_ARG;
 
@@ -324,7 +328,15 @@ cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
     cmd->opts = opts;
     cmd->opts[cmd->opts_len - 1] = _opt;
 
+    if(out_opt) {
+        *out_opt = _opt;
+    }
+
     return _getoopts_recalc(cmd);
+}
+
+cu_err_t cmder_add_vopt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
+    return cmder_add_opt(cmd, opt, NULL);
 }
 
 cu_err_t cmder_get_optval(cmder_cmd_val_t* cmdval, char optname, cmder_opt_val_t** out_optval) {

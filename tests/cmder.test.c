@@ -77,10 +77,10 @@ int main() {
 
     test_getoopts(cmder);
 
-    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){
+    assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){
         .name = "help",
         .callback = &help_cb
-    }, NULL) == CU_OK);
+    }) == CU_OK);
 
     cmder_cmd_handle_t echo;
     
@@ -91,7 +91,7 @@ int main() {
 
     assert(echo);
 
-    assert(cmder_add_opt(echo, &(cmder_opt_t){
+    assert(cmder_add_vopt(echo, &(cmder_opt_t){
         .name = 'm',
         .is_arg = true
     }) == 0);
@@ -101,15 +101,15 @@ int main() {
         .callback = &ok_cb
     }, &ok) == CU_OK);
 
-    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){
+    assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){
         .name = "help",
         .callback = &help_cb
-    }, NULL) == CU_ERR_CMDER_CMD_EXIST); // already exist
+    }) == CU_ERR_CMDER_CMD_EXIST); // already exist
 
-    assert(cmder_add_opt(echo, &(cmder_opt_t){ .name = 'm' }) == CU_ERR_CMDER_OPT_EXIST); // already exist
+    assert(cmder_add_vopt(echo, &(cmder_opt_t){ .name = 'm' }) == CU_ERR_CMDER_OPT_EXIST); // already exist
 
     // no callback provided
-    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "kkk" }, NULL) == CU_ERR_INVALID_ARG);
+    assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){ .name = "kkk" }) == CU_ERR_INVALID_ARG);
 
     assert(cmder_run(cmder, "") != CU_OK); // no command
     assert(cmder_run(cmder, "+") != CU_OK); // wrong cmder name
@@ -188,14 +188,14 @@ static void test_getoopts(cmder_handle_t cmder) {
     cmder_cmd_handle_t cmplx;
     assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "c1", .callback = &null_cb }, &cmplx) == CU_OK);
     assert(cmplx);
-    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'a' }) == CU_OK);
-    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'b', .is_arg = true }) == CU_OK);
-    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'c', .is_arg = true, .is_optional = true }) == CU_OK);
-    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'd' }) == CU_OK);
-    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'e', .is_arg = true, .is_optional = true }) == CU_OK);
-    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'f', .is_arg = true }) == CU_OK);
-    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'g' }) == CU_OK);
-    assert(cmder_add_opt(cmplx, &(cmder_opt_t){ .name = 'h' }) == CU_OK);
+    assert(cmder_add_vopt(cmplx, &(cmder_opt_t){ .name = 'a' }) == CU_OK);
+    assert(cmder_add_vopt(cmplx, &(cmder_opt_t){ .name = 'b', .is_arg = true }) == CU_OK);
+    assert(cmder_add_vopt(cmplx, &(cmder_opt_t){ .name = 'c', .is_arg = true, .is_optional = true }) == CU_OK);
+    assert(cmder_add_vopt(cmplx, &(cmder_opt_t){ .name = 'd' }) == CU_OK);
+    assert(cmder_add_vopt(cmplx, &(cmder_opt_t){ .name = 'e', .is_arg = true, .is_optional = true }) == CU_OK);
+    assert(cmder_add_vopt(cmplx, &(cmder_opt_t){ .name = 'f', .is_arg = true }) == CU_OK);
+    assert(cmder_add_vopt(cmplx, &(cmder_opt_t){ .name = 'g' }) == CU_OK);
+    assert(cmder_add_vopt(cmplx, &(cmder_opt_t){ .name = 'h' }) == CU_OK);
     assert(cmder_getoopts(cmplx, &tmp) == CU_OK);
     assert(estr_eq(tmp, ":ab:c::de::f:gh"));
     free(tmp);
@@ -294,7 +294,7 @@ static void test_args_ptrs() {
     assert(cmder);
     cmder_cmd_handle_t test;
     assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "test", .callback = &test_args_ptrs_cb }, &test) == CU_OK);
-    assert(cmder_add_opt(test, &(cmder_opt_t) { .name = 's', .is_arg = true, .is_optional = false }) == CU_OK);
+    assert(cmder_add_vopt(test, &(cmder_opt_t) { .name = 's', .is_arg = true, .is_optional = false }) == CU_OK);
     assert(cmder_run_args(cmder, _argc, _argv) == CU_OK);
 
     cu_list_free(_argv, _argc);
