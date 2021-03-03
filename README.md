@@ -3,7 +3,7 @@ C utilities
 
 ## Targets
 
-Usage: `make TARGET`
+Usage: `make TARGET [TARGET...]`
 
 | Target  | Description |
 | ------------- | ------------- |
