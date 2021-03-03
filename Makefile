@@ -1,15 +1,37 @@
-CC=gcc
+CCFLAGS = -I.
+CCWARNINGS = -Wall -Wextra
+CC = gcc $(CCFLAGS) $(CCWARNINGS)
+
+ESTR_OBJS = estr.o
+CMDER_OBJS = $(ESTR_OBJS) cmder.o
+
+.PHONY: all all.test clean
 
 null:
 	@:
 
-test: test-estr test-cmder
+%.o: %.c Makefile
+	$(CC) -c -o $@ $<
 
-test-estr: tests/estr.test.o estr.o
-	$(CC) -o tests/estr.test tests/estr.test.o estr.o -I. && tests/estr.test
+all: estr cmder
+	@:
 
-test-cmder: tests/cmder.test.o cmder.o estr.o
-	$(CC) -o tests/cmder.test tests/cmder.test.o cmder.o estr.o -I. && tests/cmder.test
+estr: $(ESTR_OBJS)
+	@:
+
+cmder: $(CMDER_OBJS)
+	@:
+
+all.test: estr.test cmder.test
+	@echo "All test passed"
+
+estr.test: $(ESTR_OBJS) tests/estr.test.o
+	$(CC) -o tests/$@ $^
+	tests/estr.test
+
+cmder.test: $(CMDER_OBJS) tests/cmder.test.o
+	$(CC) -o tests/$@ $^
+	tests/cmder.test
 
 clean:
 	find ./ -type f \( -iname "*.o" -o -iname "*.test" \) -delete
