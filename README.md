@@ -1,5 +1,5 @@
 # :hammer_and_wrench: cutils
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) ![Build status](https://github.com/abobija/cutils/actions/workflows/c-cpp.yml/badge.svg)
 
 Set of compact and portable C utilities with the intention of being very fast, efficient and easy to use. Their main purpose is to be used in IoT and embedded systems.
 
