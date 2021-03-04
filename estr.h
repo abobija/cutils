@@ -43,6 +43,15 @@ bool estrn_eq(const char* str1, const char* str2, size_t n);
 bool estr_sw(const char* str1, const char* str2);
 
 /**
+ * @brief Check if string starts with character
+ * @param str String
+ * @param chr Character
+ * @return true if string starts with character
+ *         In special case when string is empty, function will return false
+ */
+bool estr_sw_chr(const char* str, char chr);
+
+/**
  * @brief Check if one string ends with another
  * @param str1 First string
  * @param str2 Second string
@@ -50,6 +59,15 @@ bool estr_sw(const char* str1, const char* str2);
  *         In special cases when second or both strings are empty, function will return false
  */
 bool estr_ew(const char* str1, const char* str2);
+
+/**
+ * @brief Check if string ends with character
+ * @param str String
+ * @param chr Character
+ * @return true if string ends with character
+ *         In special case when string is empty, function will return false
+ */
+bool estr_ew_chr(const char* str, char chr);
 
 /**
  * @brief Check if all characters in string are digits
@@ -102,9 +120,33 @@ char* estr_rep(const char* orig, const char* rep, const char* with);
 /**
  * @brief Checks if character is alphanumeric
  * @param chr Character
- * @return tru if character is alphanumeric
+ * @return true if character is alphanumeric
  */
 bool estr_is_alnum(char chr);
+
+/**
+ * @brief Check if character is whitespace
+ * @param chr Character
+ * @return true if character is whitespace
+ */
+bool estr_chr_is_ws(char chr);
+
+/**
+ * @brief Checks if string does not starts or ends with whitespace
+ * @param str String that is gonna be tested if it is trimmed
+ * @return true if string is trimmed.
+ *         If special case when string is null, false will be returned.
+ */
+bool estr_is_trimmed(const char* str);
+
+/**
+ * @brief Checks if string contains unescaped character
+ * @param str String
+ * @param chr Character
+ * @return true if string contains unescaped character.
+ *         In special case when string is null, false will be returned
+ */
+bool estr_contains_unescaped_chr(const char* str, char chr);
 
 #ifdef __cplusplus
 }

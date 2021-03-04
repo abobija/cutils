@@ -36,6 +36,10 @@ static void test_estr_sw() {
     assert(!estr_sw("", ""));
     assert(!estr_sw("+react", "   "));
     assert(!estr_sw("  ", "+react"));
+
+    assert(!estr_sw_chr(NULL, 'a'));
+    assert( estr_sw_chr("ab", 'a'));
+    assert(!estr_sw_chr("ab", 'b'));
 }
 
 static void test_estr_ew() {
@@ -52,6 +56,10 @@ static void test_estr_ew() {
     assert(!estr_ew("", ""));
     assert(!estr_ew("+react", "   "));
     assert(!estr_ew("  ", "+react"));
+
+    assert(!estr_ew_chr(NULL, 'a'));
+    assert( estr_ew_chr("ab", 'b'));
+    assert(!estr_ew_chr("ab", 'a'));
 }
 
 static void test_estrn_is_digit_only() {
@@ -173,6 +181,24 @@ static void test_estr_rep() {
     assert(!tmp);
 }
 
+static void test_estr_trim() {
+    assert(estr_is_trimmed("ddd"));
+    assert(estr_is_trimmed(""));
+    assert(!estr_is_trimmed(" ddd"));
+    assert(!estr_is_trimmed("ddd "));
+    assert(!estr_is_trimmed(" ddd "));
+    assert(!estr_is_trimmed("ddd    "));
+    assert(!estr_is_trimmed("   ddd"));
+    assert(!estr_is_trimmed("   ddd "));
+}
+
+static void test_escaping() {
+    assert(!estr_contains_unescaped_chr(NULL, '\"'));
+    assert(!estr_contains_unescaped_chr("abc", '\"'));
+    assert(!estr_contains_unescaped_chr("\\\"", '\"'));
+    assert(estr_contains_unescaped_chr("asfd\"test\"", '\"'));
+}
+
 int main() {
     test_estr_eq();
     test_estrn_eq();
@@ -184,6 +210,8 @@ int main() {
     test_estr_cat();
     test_estr_url_encode();
     test_estr_rep();
+    test_estr_trim();
+    test_escaping();
 
     return 0;
 }

@@ -29,6 +29,10 @@ bool estr_sw(const char* str1, const char* str2) {
     return i > 0 && !str2[i];
 }
 
+bool estr_sw_chr(const char* str, char chr) {
+    return !str ? false : str[0] == chr;
+}
+
 bool estr_ew(const char* str1, const char* str2) {
 	if(!str1 || !str2)
 		return false;
@@ -56,6 +60,10 @@ bool estr_ew(const char* str1, const char* str2) {
     }
 
 	return true;
+}
+
+bool estr_ew_chr(const char* str, char chr) {
+    return !str ? false : str[strlen(str) - 1] == chr;
 }
 
 bool estrn_is_digit_only(const char* str, size_t n) {
@@ -273,4 +281,37 @@ char* estr_rep(const char *orig, const char *rep, const char *with) {
 
 bool estr_is_alnum(char chr) {
     return isalnum(chr);
+}
+
+bool estr_chr_is_ws(char chr) {
+    return chr == ' '||
+        chr == '\t' ||
+        chr == '\r' ||
+        chr == '\n' ||
+        chr == '\v' ||
+        chr == '\f';
+}
+
+bool estr_is_trimmed(const char* str) {
+    return !str ? false :
+        (!estr_chr_is_ws(str[0]) && !estr_chr_is_ws(str[strlen(str) - 1]));
+}
+
+bool estr_contains_unescaped_chr(const char* str, char chr) {
+    if(!str) {
+        return false;
+    }
+
+    char* curr = (char*) str;
+    char* prev = NULL;
+
+    while(*curr) {
+        if(*curr == chr && (!prev || *prev != '\\')) {
+            return true;
+        }
+
+        prev = curr++;
+    }
+
+    return false;
 }

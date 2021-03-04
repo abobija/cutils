@@ -73,8 +73,10 @@ static void test_getoopts(cmder_handle_t cmder);
 static void test_args();
 static void test_args_ptrs();
 static void test_error_callback();
+static void test_run_raw_args();
 
 int main() {
+    test_run_raw_args();
     test_args();
     test_args_ptrs();
     test_error_callback();
@@ -218,6 +220,34 @@ int main() {
     assert(cmder_destroy(cmder) == CU_OK);
 
     return 0;
+}
+
+static void test_run_raw_args() {
+    cmder_handle_t cmder = NULL;
+    assert(cmder_create(&(cmder_t){ .name = "esp" }, &cmder) == CU_OK && cmder);
+    assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){ .name = "touch", .callback = &null_cb }) == CU_OK);
+
+    int argc = 0;
+    char** argv = NULL;
+    argv = calloc(2, sizeof(char*));
+
+    argv[argc++] = strdup("kkk");
+    assert(cmder_vrun_args(cmder, argc, argv) == CU_ERR_CMDER_CMD_NOEXIST);
+
+    free(argv[0]);
+    argv[0] = strdup("touch");
+    assert(cmder_vrun_args(cmder, argc, argv) == CU_OK);
+
+    argv[argc++] = strdup("extra");
+    assert(cmder_vrun_args(cmder, argc, argv) == CU_OK);
+
+    free(argv[1]);
+    argv[1] = strdup("\"unescaped");
+    assert(cmder_vrun_args(cmder, argc, argv) == CU_ERR_SYNTAX_ERROR);
+
+    free(argv[1]);
+    argv[1] = strdup(" not trimmed ");
+    assert(cmder_vrun_args(cmder, argc, argv) == CU_ERR_SYNTAX_ERROR);
 }
 
 static void test_getoopts(cmder_handle_t cmder) {

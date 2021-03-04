@@ -404,16 +404,20 @@ static cmder_opt_handle_t _first_mandatory_opt_which_is_not_set(cmder_optval_t**
     return NULL;
 }
 
-static cu_err_t _argv_in_good_condition(int argc, char** argv, bool* condition) {
+static cu_err_t _argv_is_in_good_condition(int argc, char** argv, bool* condition) {
     if(argc <= 0 || !argv || !condition) {
         return CU_ERR_INVALID_ARG;
     }
 
-    // todo:
-    //   - everything must be trimmed
-    //   - no unescaped quotes
-
     *condition = true;
+
+    for(int i = 0; i < argc; i++) {
+        if(!estr_is_trimmed(argv[i]) || estr_contains_unescaped_chr(argv[i], '\"')) {
+            *condition = false;
+            return CU_ERR_SYNTAX_ERROR;
+        }
+    }
+
     return CU_OK;
 }
 
@@ -426,13 +430,13 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
         return CU_ERR_CMDER_IGNORE;
     }
 
+    cu_err_t err = CU_OK;
     bool argv_condition;
 
-    if(safe && (_argv_in_good_condition(argc, argv, &argv_condition) != CU_OK || !argv_condition)) {
-        return CU_ERR_INVALID_ARG;
+    if(safe && ((err = _argv_is_in_good_condition(argc, argv, &argv_condition)) != CU_OK || !argv_condition)) {
+        return err;
     }
 
-    cu_err_t err = CU_OK;
     cmder_cmd_handle_t cmd = NULL;
 
     if(cmder_get_cmd_by_name(cmder, argv[0], &cmd) != CU_OK) { // argv[0] is cmd name
