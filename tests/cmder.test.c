@@ -272,7 +272,12 @@ static void test_signatures() {
         && estr_eq(sig, "touch [OPTION] ... [-b bval] [-c cval] -d dval -e eval"));
     free(sig);
 
-    //printf("%ld: \"%s\"\n", sig_len, sig);
+    char* manual = NULL;
+    size_t manual_len = 0;
+    assert(cmder_cmd_manual(cmd, &manual, &manual_len) == CU_OK);
+    assert(manual);
+    //printf("%ld:\n%s\n", manual_len, manual);
+    free(manual);
 }
 
 static void test_run_raw_args() {

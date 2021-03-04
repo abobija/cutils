@@ -2,6 +2,7 @@
 #include "estr.h"
 #include "cutils.h"
 #include <getopt.h>
+#include <assert.h>
 
 struct cmder_cmd_handle {
 	char* name;
@@ -488,6 +489,7 @@ static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, 
     }
 
     char* signature = NULL;
+    char* ptr = NULL;
     cmder_opt_handle_t* opts = NULL;
     cu_err_t err = CU_OK;
 
@@ -497,7 +499,7 @@ static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, 
         goto _nomem;
     }
 
-    char* ptr = signature;
+    ptr = signature;
     memcpy(ptr, cmd->name, name_len);
     ptr += name_len;
     *ptr++ = ' ';
@@ -549,18 +551,18 @@ static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, 
 
     *--ptr = '\0'; // replace last space
 
-    *out_signature = signature;
-
-    if(out_len) {
-        *out_len = ptr - signature;
-    }
+    // make sure that ptr is at exact the same place where it should be
+    assert(ptr - signature == (long int) len);
 
     goto _return;
 _nomem:
     err = CU_ERR_NO_MEM;
     free(signature);
+    signature = NULL;
 _return:
     free(opts);
+    *out_signature = signature;
+    if(out_len && signature) { *out_len = ptr - signature; }
     return err;
 }
 
@@ -578,6 +580,157 @@ cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, size_
     }
 
     return _create_signature(cmd, out_signature, out_len, len, name_len, flags_len, oargs_len, margs_len);
+}
+
+static cu_err_t _calc_manual_len(cmder_cmd_handle_t cmd, size_t* out_len, uint16_t* out_flags_len, uint16_t* out_oargs_len, uint16_t* out_margs_len) {
+    if(!cmd) {
+        return CU_ERR_INVALID_ARG;
+    }
+
+    cu_err_t err = CU_OK;
+    uint16_t flags_len = 0, oargs_len = 0, margs_len = 0;
+    err = _cmd_options(cmd, CMDER_OPT_FLAG, NULL, &flags_len);
+    if(err != CU_OK) { return err; }
+    err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, NULL, &oargs_len);
+    if(err != CU_OK) { return err; }
+    err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, NULL, &margs_len);
+    if(err != CU_OK) { return err; }
+
+    if(flags_len + oargs_len + margs_len == 0) {
+        if(out_len) { *out_len = 0; }
+        return CU_OK;
+    }
+
+    size_t len = 0;
+
+    if(margs_len > 0) {
+        len += 16; // "Mandatory args:[NL]"
+        for(uint16_t i = 0; i < margs_len; i++) {
+            len += 4; // "[TAB]-x[NL]"
+        }
+    }
+
+    if(oargs_len > 0) {
+        len += 15; // "Optional args:[NL]"
+        for(uint16_t i = 0; i < oargs_len; i++) {
+            len += 4; // "[TAB]-x[NL]"
+        }
+    }
+
+    if(flags_len > 0) {
+        len += 9; // "Options:[NL]"
+        for(uint16_t i = 0; i < oargs_len; i++) {
+            len += 4; // "[TAB]-x[NL]"
+        }
+    }
+
+    if(len > 0) {
+        len--; // remove last [NL]
+    }
+
+    if(out_len) {
+        *out_len = len;
+    }
+
+    if(out_flags_len) *out_flags_len = flags_len;
+    if(out_oargs_len) *out_oargs_len = oargs_len;
+    if(out_margs_len) *out_margs_len = margs_len;
+
+    return err;
+}
+
+static cu_err_t _create_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t* out_len) {
+    if(!cmd || !out_manual) {
+        return CU_ERR_INVALID_ARG;
+    }
+
+    cmder_opt_handle_t* opts = NULL;
+    char* manual = NULL;
+    char* ptr = NULL;
+    size_t len = 0;
+    uint16_t flags_len = 0, oargs_len = 0, margs_len = 0;
+    cu_err_t err = _calc_manual_len(cmd, &len, &flags_len, &oargs_len, &margs_len);
+    if(err != CU_OK) { return err; }
+
+    if(len == 0) {
+        goto _return;
+    }
+
+    ptr = manual = malloc(len + 1);
+    if(!manual) { goto _nomem; }
+
+    if(margs_len > 0) {
+        err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, NULL);
+        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
+
+        memcpy(ptr, "Mandatory args:\n", 16);
+        ptr += 16;
+
+        for(uint16_t i = 0; i < margs_len; i++) {
+            *ptr++ = '\t';
+            *ptr++ = '-';
+            *ptr++ = opts[i]->name;
+            *ptr++ = '\n';
+        }
+
+        free(opts);
+        opts = NULL;
+    }
+
+    if(oargs_len > 0) {
+        err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, NULL);
+        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
+
+        memcpy(ptr, "Optional args:\n", 15);
+        ptr += 15;
+
+        for(uint16_t i = 0; i < oargs_len; i++) {
+            *ptr++ = '\t';
+            *ptr++ = '-';
+            *ptr++ = opts[i]->name;
+            *ptr++ = '\n';
+        }
+
+        free(opts);
+        opts = NULL;
+    }
+
+    if(flags_len > 0) {
+        err = _cmd_options(cmd, CMDER_OPT_FLAG, &opts, NULL);
+        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
+
+        memcpy(ptr, "Options:\n", 9);
+        ptr += 9;
+
+        for(uint16_t i = 0; i < oargs_len; i++) {
+            *ptr++ = '\t';
+            *ptr++ = '-';
+            *ptr++ = opts[i]->name;
+            *ptr++ = '\n';
+        }
+
+        free(opts);
+        opts = NULL;
+    }
+
+    *--ptr = '\0'; // replace last [NL]
+
+    // make sure that ptr is at exact the same place where it should be
+    assert(ptr - manual == (long int) len);
+
+    goto _return;
+_nomem:
+    err = CU_ERR_NO_MEM;
+    free(manual);
+    manual = NULL;
+_return:
+    *out_manual = manual;
+    if(out_len && manual) { *out_len = ptr - manual; }
+    return err;
+}
+
+cu_err_t cmder_cmd_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t* out_len) {
+    return _create_manual(cmd, out_manual, out_len);
 }
 
 cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t** out_optval) {
