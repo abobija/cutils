@@ -346,14 +346,21 @@ cu_err_t cmder_add_vopt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
     return cmder_add_opt(cmd, opt, NULL);
 }
 
+/**
+ * @brief Calculate how much is there options with specific type.
+ *        Set param "out_opts" to NULL if you want just to calculate
+ *        without memory allocation for options array
+ * 
+ * @param cmd command
+ * @param type option type
+ * @param out_opts options array (if NULL - no memory will be alocated)
+ * @param out_len options array length
+ */
 static cu_err_t _cmd_options(cmder_cmd_handle_t cmd, cmder_opt_type_t type, cmder_opt_handle_t** out_opts, uint16_t* out_len) {
-    if(!cmd || !out_opts) {
+    if(!cmd) {
         return CU_ERR_INVALID_ARG;
     }
-    
-    *out_opts = NULL;
 
-    cmder_opt_handle_t* opts = NULL;
     uint16_t len = 0;
 
     for(uint16_t i = 0; i < cmd->opts_len; i++) {
@@ -368,11 +375,14 @@ static cu_err_t _cmd_options(cmder_cmd_handle_t cmd, cmder_opt_type_t type, cmde
         }
     }
 
-    if(len == 0) {
+    if(len == 0 || !out_opts) {
+        if(out_opts) { *out_opts = NULL; }
+        if(out_len) { *out_len = len; }
+        
         return CU_OK;
     }
 
-    opts = malloc(len * sizeof(cmder_opt_handle_t));
+    cmder_opt_handle_t* opts = malloc(len * sizeof(cmder_opt_handle_t));
 
     if(!opts) {
         return CU_ERR_NO_MEM;
@@ -430,13 +440,13 @@ static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, size_t* out_len, siz
     len++; // space
 
     uint16_t flags_len = 0, oargs_len = 0, margs_len = 0;
-    cmder_opt_handle_t* opts = NULL;
-    err = _cmd_options(cmd, CMDER_OPT_FLAG, &opts, &flags_len);
+    err = _cmd_options(cmd, CMDER_OPT_FLAG, NULL, &flags_len);
+    if(err != CU_OK) { return err; }
+    err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, NULL, &oargs_len);
+    if(err != CU_OK) { return err; }
+    err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, NULL, &margs_len);
+    if(err != CU_OK) { return err; }
 
-    if(err != CU_OK) {
-        if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
-    }
-    
     if(flags_len > 0) {
         len += 9; // "[OPTION] "
 
@@ -445,30 +455,13 @@ static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, size_t* out_len, siz
         }
     }
 
-    free(opts);
-    err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, &oargs_len);
-
-    if(err != CU_OK) {
-        if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
-    }
-
     for(uint16_t i = 0; i < oargs_len; i++) {
         len += 10; // "[-x xval] "
-    }
-
-    free(opts);
-    err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, &margs_len);
-
-    if(err != CU_OK) {
-        if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
     }
 
     for(uint16_t i = 0; i < margs_len; i++) {
         len += 8; // "-x xval "
     }
-
-    free(opts);
-    opts = NULL;
 
     len--; // last space
 
@@ -477,12 +470,7 @@ static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, size_t* out_len, siz
     if(out_oargs_len) { *out_oargs_len = oargs_len; }
     if(out_margs_len) { *out_margs_len = margs_len; }
 
-    goto _return;
-_nomem:
-    err = CU_ERR_NO_MEM;
-_return:
-    free(opts);
-    return err;
+    return CU_OK;
 }
 
 /**
@@ -526,10 +514,7 @@ static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, 
 
     if(oargs_len > 0) {
         err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, NULL);
-
-        if(err != CU_OK) {
-            if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
-        }
+        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
 
         for(uint16_t i = 0; i < oargs_len; i++) {
             *ptr++ = '[';
@@ -547,10 +532,7 @@ static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, 
 
     if(margs_len > 0) {
         err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, NULL);
-
-        if(err != CU_OK) {
-            if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
-        }
+        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
 
         for(uint16_t i = 0; i < margs_len; i++) {
             *ptr++ = '-';
