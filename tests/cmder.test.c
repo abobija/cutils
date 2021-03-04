@@ -76,8 +76,10 @@ static void test_args_ptrs();
 static void test_error_callback();
 static void test_run_raw_args();
 static void test_signatures();
+static void test_with_no_prefix();
 
 int main() {
+    test_with_no_prefix();
     test_signatures();
     test_run_raw_args();
     test_args();
@@ -91,7 +93,8 @@ int main() {
 
     assert(cmder_create(&(cmder_t){
         .name = "+esp32",
-        .context = &data
+        .context = &data,
+        .name_as_cmdline_prefix = true
     }, &cmder) == CU_OK);
 
     assert(cmder);
@@ -223,6 +226,20 @@ int main() {
     assert(cmder_destroy(cmder) == CU_OK);
 
     return 0;
+}
+
+static void test_with_no_prefix() {
+    cmder_handle_t cmder = NULL;
+    assert(cmder_create(&(cmder_t){ .name = "esp" }, &cmder) == CU_OK && cmder);
+    cmder_cmd_handle_t cmd = NULL;
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "touch", .callback = &null_cb }, &cmd) == CU_OK);
+    assert(cmd);
+
+    assert(cmder_vrun(cmder, "esp test") != CU_OK);
+    assert(cmder_vrun(cmder, "test") != CU_OK);
+    assert(cmder_vrun(cmder, "esp") != CU_OK);
+    assert(cmder_vrun(cmder, "esp touch") != CU_OK);
+    assert(cmder_vrun(cmder, "touch") == CU_OK);
 }
 
 static void test_signatures() {
@@ -509,7 +526,7 @@ static void error_cb(cmder_cmdval_t* cmdval) {
 
 static void test_error_callback() {
     cmder_handle_t cmder = NULL;
-    assert(cmder_create(&(cmder_t){ .name = "pc" }, &cmder) == CU_OK);
+    assert(cmder_create(&(cmder_t){ .name = "pc", .name_as_cmdline_prefix = true }, &cmder) == CU_OK);
     assert(cmder);
     cmder_cmd_handle_t error = NULL;
     assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "error", .callback = &error_cb }, &error) == CU_OK);

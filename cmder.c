@@ -15,6 +15,7 @@ struct cmder_cmd_handle {
 
 struct cmder_handle {
     char* name;
+    bool name_as_cmdline_prefix;
     void* context;
     size_t cmdline_max_len;
     cmder_cmd_handle_t* cmds;
@@ -39,6 +40,7 @@ cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
     
     cmder_handle_t cmder = cu_tctor(cmder_handle_t, struct cmder_handle,
         .name = _name,
+        .name_as_cmdline_prefix = config->name_as_cmdline_prefix,
         .context = config->context,
         .cmdline_max_len = config->cmdline_max_len > 0 ? config->cmdline_max_len : CMDER_DEFAULT_CMDLINE_MAX_LEN
     );
@@ -968,12 +970,17 @@ cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline, const void* run_co
     
     size_t cmder_name_len = strlen(cmder->name);
 
-    if(!estrn_eq(cmdline, cmder->name, cmder_name_len)) // not for us
+    if(cmder->name_as_cmdline_prefix && !estrn_eq(cmdline, cmder->name, cmder_name_len)) // not for us
         return CU_ERR_CMDER_IGNORE;
 
     int argc;
     char** argv = NULL;
-    cu_err_t err = cmder_args(cmdline + cmder_name_len, &argc, &argv);
+    
+    cu_err_t err = cmder_args(
+        cmder->name_as_cmdline_prefix ? cmdline + cmder_name_len : cmdline,
+        &argc,
+        &argv
+    );
 
     if(err != CU_OK) {
         return err;

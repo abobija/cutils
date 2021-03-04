@@ -31,6 +31,7 @@ typedef struct cmder_cmd_handle* cmder_cmd_handle_t;
 
 typedef struct {
     const char* name;
+    bool name_as_cmdline_prefix;
     void* context;
     size_t cmdline_max_len;
 } cmder_t;
