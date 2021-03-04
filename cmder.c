@@ -178,13 +178,13 @@ cu_err_t cmder_args(const char* cmdline, int* argc, char*** out_argv) {
         cmder_argv_iteration_handler();
     });
     
-    *argc = len;
     goto _return;
 _nomem:
     err = CU_ERR_NO_MEM;
-    *argc = 0;
+    len = 0;
     cu_list_free(argv, len);
 _return:
+    *argc = len;
     *out_argv = argv;
     return err;
 }
@@ -975,7 +975,7 @@ cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline, const void* run_co
 
     int argc;
     char** argv = NULL;
-    
+
     cu_err_t err = cmder_args(
         cmder->name_as_cmdline_prefix ? cmdline + cmder_name_len : cmdline,
         &argc,
