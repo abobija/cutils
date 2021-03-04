@@ -55,11 +55,11 @@ cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoopts) {
         return CU_ERR_CMDER_NO_CMDS;
     }
 
-    uint16_t len = 1; // :
+    uint16_t len = 1;
 
     for(uint16_t i = 0; i < cmd->opts_len; i++) {
         cmder_opt_handle_t opt = cmd->opts[i];
-        len += opt->is_arg ? (opt->is_optional ? 3 : 2) : 1;
+        len += opt->is_arg ? 2 : 1;
     }
 
     char* getoopts = malloc(len + 1);
@@ -74,13 +74,10 @@ cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoopts) {
     for(uint16_t i = 0; i < cmd->opts_len; i++) {
         cmder_opt_handle_t opt = cmd->opts[i];
         *ptr++ = opt->name;
-        if(!opt->is_arg) continue;
-        *ptr++ = ':';
-        if(opt->is_optional) *ptr++ = ':';
+        if(opt->is_arg) *ptr++ = ':';
     }
 
     getoopts[len] = '\0';
-
     *out_getoopts = getoopts;
 
     return CU_OK;
@@ -119,8 +116,6 @@ cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoopts) {
     } \
     i++; \
 }
-
-// todo: ignore "-" if line is: a b - c d
 
 cu_err_t cmder_args(const char* cmdline, int* argc, char*** out_argv) {
     if(!cmdline || !argc || !out_argv) {
@@ -409,31 +404,32 @@ static cmder_opt_handle_t _first_mandatory_opt_which_is_not_set(cmder_optval_t**
     return NULL;
 }
 
-static int _option_index(int argc, char** argv) {
-    if(argc <= 1 || !argv) { // opts start from 1
-        return -1;
-    }
-
-    for(int i = 1; i < argc; i++) {
-        if(argv[i][0] == '-') {
-            return argv[i][1] == '-' ? -1 : i;
-        }
-    }
-
-    return -1;
-}
-
-cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv, const void* run_context) {
-    if(!cmder) {
+static cu_err_t _argv_in_good_condition(int argc, char** argv, bool* condition) {
+    if(argc <= 0 || !argv || !condition) {
         return CU_ERR_INVALID_ARG;
     }
 
-    // todo: everyhting must be trimmed 
-    // todo: option pieces must be > 1... cannot be just "-" (extra can be 1)
-    // (maybe make other function (prefix _safe) because i call this with every trimmed already)?
+    // todo:
+    //   - everything must be trimmed
+    //   - no unescaped quotes
 
+    *condition = true;
+    return CU_OK;
+}
+
+static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, const void* run_context, bool safe) {
+    if(!cmder) {
+        return CU_ERR_INVALID_ARG;
+    }
+    
     if(!argv || argc <= 0) { // nothing to do
         return CU_ERR_CMDER_IGNORE;
+    }
+
+    bool argv_condition;
+
+    if(safe && (_argv_in_good_condition(argc, argv, &argv_condition) != CU_OK || !argv_condition)) {
+        return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err = CU_OK;
@@ -455,60 +451,49 @@ cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv, const void*
         goto _nomem;
     }
 
-    if(cmd->opts_len == 0) { // cmd has no added opts
-        int oind = _option_index(argc, argv); // +1 for skip cmd name item
+    if(cmd->opts_len > 0) {
+        // make one optval in cmdval for every opt in cmd
+        cmdval->optvals_len = cmd->opts_len;
+        cmdval->optvals = calloc(cmdval->optvals_len, sizeof(cmder_optval_t*));
 
-        if(oind == -1) { // no opts in array
-            // todo: attach extra args
-            cmd->callback(cmdval);
-            goto _return;
+        if(!cmdval->optvals) {
+            goto _nomem;
         }
 
-        err = CU_ERR_CMDER_UNKNOWN_OPTION;
-        cmdval->error = CMDER_CMDVAL_UNKNOWN_OPTION;
-        cmdval->error_option_name = argv[oind][1]; // todo: its prechecked that every option must be >1 ???
-        goto _error;
-    }
+        for(uint16_t i = 0; i < cmd->opts_len; i++) {
+            cmdval->optvals[i] = cu_ctor(cmder_optval_t,
+                .opt = cmd->opts[i]
+            );
 
-    // make one optval in cmdval for every opt in cmd
-    cmdval->optvals_len = cmd->opts_len;
-    cmdval->optvals = calloc(cmdval->optvals_len, sizeof(cmder_optval_t*));
-
-    if(!cmdval->optvals) {
-        goto _nomem;
-    }
-
-    for(uint16_t i = 0; i < cmd->opts_len; i++) {
-        cmdval->optvals[i] = cu_ctor(cmder_optval_t,
-            .opt = cmd->opts[i]
-        );
-
-        if(!cmdval->optvals[i]) {
-            goto _nomem;
+            if(!cmdval->optvals[i]) {
+                goto _nomem;
+            }
         }
     }
 
     opterr = 0;
     optind = 0;
 
+    cmder_optval_t* optval = NULL;
     int o;
-
-    while((o = getopt(argc, argv, cmd->getoopts)) != -1) {
+    while((o = getopt(argc, argv, (!cmd->getoopts ? "" : cmd->getoopts))) != -1) {
         if(o == ':') {
-            err = CU_ERR_CMDER_OPT_VAL_MISSING;
-            cmdval->error = CMDER_CMDVAL_OPTION_VALUE_MISSING;
-            cmdval->error_option_name = optopt;
-            goto _error;
+            if(cmder_get_optval(cmdval, optopt, &optval) != CU_OK) {
+                err = CU_FAIL;
+                goto _return;
+            } else if(!optval->opt->is_optional) {
+                err = CU_ERR_CMDER_OPT_VAL_MISSING;
+                cmdval->error = CMDER_CMDVAL_OPTION_VALUE_MISSING;
+                cmdval->error_option_name = optopt;
+                goto _error;
+            }
         } else if(o == '?') {
             err = CU_ERR_CMDER_UNKNOWN_OPTION;
             cmdval->error = CMDER_CMDVAL_UNKNOWN_OPTION;
             cmdval->error_option_name = optopt;
             goto _error;
         } else {
-            cmder_optval_t* optval = NULL;
-
             if(cmder_get_optval(cmdval, o, &optval) != CU_OK) {
-                // interesting, but not found.. this should not happen
                 err = CU_FAIL;
                 goto _return;
             }
@@ -560,6 +545,10 @@ _return:
     return err;
 }
 
+cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv, const void* run_context) {
+    return _cmder_run_args(cmder, argc, argv, run_context, true);
+}
+
 cu_err_t cmder_vrun_args(cmder_handle_t cmder, int argc, char** argv) {
     return cmder_run_args(cmder, argc, argv, NULL);
 }
@@ -593,7 +582,7 @@ cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline, const void* run_co
         return err;
     }
 
-    err = cmder_run_args(cmder, argc, argv, run_context);
+    err = _cmder_run_args(cmder, argc, argv, run_context, false); // not-safe call (cmder_args is safe)
     cu_list_free(argv, argc);
 
     return err;

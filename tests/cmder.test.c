@@ -235,7 +235,7 @@ static void test_getoopts(cmder_handle_t cmder) {
     assert(cmder_add_vopt(cmplx, &(cmder_opt_t){ .name = 'g' }) == CU_OK);
     assert(cmder_add_vopt(cmplx, &(cmder_opt_t){ .name = 'h' }) == CU_OK);
     assert(cmder_getoopts(cmplx, &tmp) == CU_OK);
-    assert(estr_eq(tmp, ":ab:c::de::f:gh"));
+    assert(estr_eq(tmp, ":ab:c:de:f:gh"));
     free(tmp);
 }
 
@@ -355,6 +355,11 @@ static bool capture_extra2 = false;
 static char* extra0;
 static char* extra1;
 static char* extra2;
+static bool capture_b_val;
+static char* bval = NULL;
+static bool xflag;
+static bool yflag;
+static bool zflag;
 
 static void error_cb(cmder_cmdval_t* cmdval) {
     error_triggered = true;
@@ -384,10 +389,34 @@ static void error_cb(cmder_cmdval_t* cmdval) {
         return;
     }
 
+    xflag = yflag = zflag = false;
+
+    cmder_optval_t* x = NULL;
+    cmder_optval_t* y = NULL;
+    cmder_optval_t* z = NULL;
+
+    cmder_get_optval(cmdval, 'x', &x);
+    cmder_get_optval(cmdval, 'y', &y);
+    cmder_get_optval(cmdval, 'z', &z);
+
+    xflag = x && x->state;
+    yflag = y && y->state;
+    zflag = z && z->state;
+
+    if(capture_b_val) {
+        cmder_optval_t* b = NULL;
+        if(cmder_get_optval(cmdval, 'b', &b) == CU_OK && b) {
+            if(b->val) {
+                bval = strdup(b->val);
+            }
+        }
+    }
+
     error_cb_error = false;
     capture_extra0 =
     capture_extra1 =
     capture_extra2 = false;
+    capture_b_val = false;
 }
 
 static void test_error_callback() {
@@ -412,6 +441,7 @@ static void test_error_callback() {
     free(extra0);
     free(extra1);
     free(extra2);
+    extra0 = extra1 = extra2 = NULL;
     cmdval_err = CMDER_CMDVAL_NO_ERROR;
     error_triggered = error_cb_error = false;
     assert(cmder_vrun(cmder, "pc error -- a b c") == CU_OK); // it's ok to run without options and with extra args
@@ -431,7 +461,134 @@ static void test_error_callback() {
     error_triggered = error_cb_error = false;
     assert(cmder_vrun(cmder, "pc error -a") == CU_OK); // it's ok to run with "a" option now
     assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    assert(cmder_add_vopt(error, &(cmder_opt_t){ .name = 'b', .is_arg = true , .is_optional = true}) == CU_OK);
 
-    // continue...
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error") == CU_OK); // it's ok, a i b are optional
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
 
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    capture_b_val = true;
+    bval = NULL;
+    assert(cmder_vrun(cmder, "pc error -b") == CU_OK); // it's ok, b is optional
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    assert(!bval);
+    free(bval);
+    bval = NULL;
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    capture_extra0 = capture_extra1 = true;
+    assert(cmder_vrun(cmder, "pc error -- -a -b") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    assert(estr_eq(extra0, "-a"));
+    assert(estr_eq(extra1, "-b"));
+    free(extra0);
+    free(extra1);
+    extra0 = extra1 = NULL;
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    capture_b_val = true;
+    bval = NULL;
+    assert(cmder_vrun(cmder, "pc error -b \"ok bro\"") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    assert(bval && estr_eq(bval, "ok bro"));
+    free(bval);
+    bval = NULL;
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    capture_b_val = true;
+    bval = NULL;
+    assert(cmder_vrun(cmder, "pc error - - - -b \"ok bro\"") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    assert(bval && estr_eq(bval, "ok bro"));
+    free(bval);
+    bval = NULL;
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    capture_b_val = true;
+    bval = NULL;
+    capture_extra0 = true;
+    assert(cmder_vrun(cmder, "pc error -b \"ok bro\" ext") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    assert(estr_eq(bval, "ok bro"));
+    assert(estr_eq(extra0, "ext"));
+    free(bval);
+    free(extra0);
+    extra0 = NULL;
+    bval = NULL;
+
+    // flags test
+
+    assert(cmder_add_vopt(error, &(cmder_opt_t){ .name = 'x' }) == CU_OK);
+    assert(cmder_add_vopt(error, &(cmder_opt_t){ .name = 'y' }) == CU_OK);
+    assert(cmder_add_vopt(error, &(cmder_opt_t){ .name = 'z' }) == CU_OK);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -x") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR && xflag && !yflag && !zflag);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -y") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR && !xflag && yflag && !zflag);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -z") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR && !xflag && !yflag && zflag);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -x -y -z") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR && xflag && yflag && zflag);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -xy -z") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR && xflag && yflag && zflag);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -xz") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR && xflag && !yflag && zflag);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -xyz") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR && xflag && yflag && zflag);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -xoz") == CU_ERR_CMDER_UNKNOWN_OPTION); // unknown opt "o"
+    assert(error_triggered && error_cb_error && cmdval_err == CMDER_CMDVAL_UNKNOWN_OPTION);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    capture_extra0 = true;
+    assert(cmder_vrun(cmder, "pc error hey -x") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    assert(estr_eq(extra0, "hey"));
+    free(extra0);
+    extra0 = NULL;
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    capture_extra0 = true;
+    assert(cmder_vrun(cmder, "pc error \\\"") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    assert(estr_eq(extra0, "\""));
+    free(extra0);
+    extra0 = NULL;
 }
