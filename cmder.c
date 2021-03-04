@@ -347,12 +347,11 @@ cu_err_t cmder_add_vopt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
 }
 
 static cu_err_t _cmd_options(cmder_cmd_handle_t cmd, cmder_opt_type_t type, cmder_opt_handle_t** out_opts, uint16_t* out_len) {
-    if(!cmd || !out_opts || !out_len) {
+    if(!cmd || !out_opts) {
         return CU_ERR_INVALID_ARG;
     }
     
     *out_opts = NULL;
-    *out_len = 0;
 
     cmder_opt_handle_t* opts = NULL;
     uint16_t len = 0;
@@ -392,25 +391,36 @@ static cu_err_t _cmd_options(cmder_cmd_handle_t cmd, cmder_opt_type_t type, cmde
     }
 
     *out_opts = opts;
-    *out_len = len;
+
+    if(out_len) {
+        *out_len = len;
+    }
 
     return CU_OK;
 }
 
-cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, size_t* out_len) {
-    if(!cmd || !out_signature) {
+/**
+ * @param cmd command
+ * @param out_len signature length
+ * @param out_name_len command name length
+ * @param out_flags_len number of flag options
+ * @param out_oargs_len number of optional args
+ * @param out_margs_len number of mandatory args
+ * @return CU_OK on success, otherwise: 
+ *         CU_ERR_INVALID_ARG;
+ *         CU_ERR_NO_MEM
+ */
+static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, size_t* out_len, size_t* out_name_len, uint16_t* out_flags_len, uint16_t* out_oargs_len, uint16_t* out_margs_len) {
+    if(!cmd || !out_len) {
         return CU_ERR_INVALID_ARG;
     }
 
-    char* signature = NULL;
-    *out_signature = NULL;
-
-    if(out_len) {
-        *out_len = 0;
-    }
+    *out_len = 0;
 
     cu_err_t err = CU_OK;
     size_t name_len = strlen(cmd->name);
+
+    if(out_name_len) { *out_name_len = name_len; }
 
     if(name_len == 0) {
         return CU_ERR_INVALID_ARG;
@@ -419,9 +429,7 @@ cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, size_
     size_t len = name_len;
     len++; // space
 
-    uint16_t flags_len = 0;
-    uint16_t oargs_len = 0;
-    uint16_t margs_len = 0;
+    uint16_t flags_len = 0, oargs_len = 0, margs_len = 0;
     cmder_opt_handle_t* opts = NULL;
     err = _cmd_options(cmd, CMDER_OPT_FLAG, &opts, &flags_len);
 
@@ -464,6 +472,37 @@ cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, size_
 
     len--; // last space
 
+    *out_len = len;
+    if(out_flags_len) { *out_flags_len = flags_len; }
+    if(out_oargs_len) { *out_oargs_len = oargs_len; }
+    if(out_margs_len) { *out_margs_len = margs_len; }
+
+    goto _return;
+_nomem:
+    err = CU_ERR_NO_MEM;
+_return:
+    free(opts);
+    return err;
+}
+
+/**
+ * @param cmd command
+ * @param out_signature signature
+ * @param out_len signature lenght
+ * @param name_length command name length
+ * @param flags_len number of flag options
+ * @param oargs_len number of optional args
+ * @param margs_len number of mandatory args
+ */
+static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, size_t* out_len, size_t len, size_t name_len, uint16_t flags_len, uint16_t oargs_len, uint16_t margs_len) {
+    if(!cmd || !out_signature || len == 0) {
+        return CU_ERR_INVALID_ARG;
+    }
+
+    char* signature = NULL;
+    cmder_opt_handle_t* opts = NULL;
+    cu_err_t err = CU_OK;
+
     signature = malloc(len + 1);
 
     if(!signature) {
@@ -486,7 +525,7 @@ cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, size_
     }
 
     if(oargs_len > 0) {
-        err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, &oargs_len);
+        err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, NULL);
 
         if(err != CU_OK) {
             if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
@@ -507,7 +546,7 @@ cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, size_
     }
 
     if(margs_len > 0) {
-        err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, &margs_len);
+        err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, NULL);
 
         if(err != CU_OK) {
             if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
@@ -541,6 +580,22 @@ _nomem:
 _return:
     free(opts);
     return err;
+}
+
+cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, size_t* out_len) {
+    if(!cmd || !out_signature) {
+        return CU_ERR_INVALID_ARG;
+    }
+
+    size_t len = 0, name_len = 0;
+    uint16_t flags_len = 0, oargs_len = 0, margs_len = 0;
+    cu_err_t err = _calc_signature_len(cmd, &len, &name_len, &flags_len, &oargs_len, &margs_len);
+
+    if(err != CU_OK) {
+        return err;
+    }
+
+    return _create_signature(cmd, out_signature, out_len, len, name_len, flags_len, oargs_len, margs_len);
 }
 
 cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t** out_optval) {
