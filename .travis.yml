@@ -1,0 +1,9 @@
+language: c
+compiler: gcc
+
+install:
+  - sudo apt-get update
+  - sudo apt-get install  build-essential
+
+script:
+  - make test clean
