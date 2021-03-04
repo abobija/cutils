@@ -784,9 +784,8 @@ cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, size_t* 
     }
 
     len += 14; // " option -- 'x'"
-    len++; // "\0"
 
-    char* errorstr = malloc(len * sizeof(char));
+    char* errorstr = malloc(len + 1);
 
     if(!errorstr) {
         if(out_len) { *out_len = 0; }
@@ -822,6 +821,9 @@ cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, size_t* 
     *ptr++ = cmdval->error_option_name;
     *ptr++ = '\'';
     *ptr = '\0';
+
+    // make sure that ptr is at exact the same place where it should be
+    assert(ptr - errorstr == (long int) len);
 
     *out_errstr = errorstr;
 
