@@ -99,6 +99,13 @@ char* estr_url_encode(const char* str);
  */
 char* estr_rep(const char* orig, const char* rep, const char* with);
 
+/**
+ * @brief Checks if character is alphanumeric
+ * @param chr Character
+ * @return tru if character is alphanumeric
+ */
+bool estr_is_alnum(char chr);
+
 #ifdef __cplusplus
 }
 #endif

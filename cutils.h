@@ -14,6 +14,7 @@ typedef int cu_err_t;
 #define CU_ERR_SYNTAX_ERROR  (-4)
 #define CU_ERR_NOT_FOUND     (-5)
 #define CU_ERR_EMPTY_STRING  (-6)
+#define CU_ERR_INVALID_CHAR  (-7)
 
 /**
  * @brief Universal handle constructor. User is responsible for freeing the resulting object

@@ -18,11 +18,11 @@ extern "C" {
 #define CU_ERR_CMDER_CMDLINE_TOO_BIG     (CU_ERR_CMDER_BASE + 4)
 #define CU_ERR_CMDER_IGNORE              (CU_ERR_CMDER_BASE + 5)
 #define CU_ERR_CMDER_CMD_NOEXIST         (CU_ERR_CMDER_BASE + 6)
-#define CU_ERR_CMDER_OPT_ARG_MISSING     (CU_ERR_CMDER_BASE + 7)
+#define CU_ERR_CMDER_OPT_VAL_MISSING     (CU_ERR_CMDER_BASE + 7)
 #define CU_ERR_CMDER_UNKNOWN_OPTION      (CU_ERR_CMDER_BASE + 8)
-#define CU_ERR_CMDER_ARGS_NOT_SET        (CU_ERR_CMDER_BASE + 9)
 #define CU_ERR_CMDER_CMD_EXIST           (CU_ERR_CMDER_BASE + 10)
 #define CU_ERR_CMDER_NO_OPTVALS          (CU_ERR_CMDER_BASE + 11)
+#define CU_ERR_CMDER_INVALID_OPT_NAME    (CU_ERR_CMDER_BASE + 12)
 
 struct cmder_handle;
 struct cmder_cmd_handle;
@@ -47,19 +47,28 @@ typedef struct {
     cmder_opt_handle_t opt;
     bool state;
     const char* val;
-} cmder_opt_val_t;
+} cmder_optval_t;
+
+typedef enum {
+    CMDER_CMDVAL_NO_ERROR,
+    CMDER_CMDVAL_OPTION_VALUE_MISSING,
+    CMDER_CMDVAL_UNKNOWN_OPTION
+} cmder_cmdval_err_t;
 
 typedef struct {
     cmder_handle_t cmder;
     cmder_cmd_handle_t cmd;
     const void* context;
-    cmder_opt_val_t** opts;
-    uint16_t opts_len;
+    const void* run_context;
+    cmder_optval_t** optvals;
+    uint16_t optvals_len;
     const char** extra_args;
     uint16_t extra_args_len;
-} cmder_cmd_val_t;
+    cmder_cmdval_err_t error;
+    char error_option_name;
+} cmder_cmdval_t;
 
-typedef void(*cmder_callback_t)(cmder_cmd_val_t* cmdval);
+typedef void(*cmder_callback_t)(cmder_cmdval_t* cmdval);
 
 typedef struct {
     const char* name;
@@ -73,10 +82,12 @@ cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_
 cu_err_t cmder_add_vcmd(cmder_handle_t cmder, cmder_cmd_t* cmd);
 cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handle_t* out_opt);
 cu_err_t cmder_add_vopt(cmder_cmd_handle_t cmd, cmder_opt_t* opt);
-cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv);
-cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline);
+cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv, const void* run_context);
+cu_err_t cmder_vrun_args(cmder_handle_t cmder, int argc, char** argv);
+cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline, const void* run_context);
+cu_err_t cmder_vrun(cmder_handle_t cmder, const char* cmdline);
 cu_err_t cmder_get_cmd_by_name(cmder_handle_t cmder, const char* cmd_name, cmder_cmd_handle_t* out_cmd_handle);
-cu_err_t cmder_get_optval(cmder_cmd_val_t* cmdval, char optname, cmder_opt_val_t** out_optval);
+cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t** out_optval);
 cu_err_t cmder_destroy(cmder_handle_t cmder);
 
 #ifdef __cplusplus

@@ -207,7 +207,7 @@ char* estr_url_encode(const char* str) {
     char* pbuf = buf;
 
     for(size_t i = 0; i < _len; i++) {
-        if (isalnum(str[i]) || strchr(".-_~", str[i])) {
+        if (estr_is_alnum(str[i]) || strchr(".-_~", str[i])) {
             *pbuf++ = str[i];
         } else if (str[i] == ' ') {
             *pbuf++ = '+';
@@ -269,4 +269,8 @@ char* estr_rep(const char *orig, const char *rep, const char *with) {
     }
     strcpy(tmp, orig);
     return result;
+}
+
+bool estr_is_alnum(char chr) {
+    return isalnum(chr);
 }

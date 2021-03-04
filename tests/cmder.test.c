@@ -10,11 +10,15 @@ static bool ok_fired = false;
 char* echo_message;
 static cmder_cmd_handle_t ok;
 
-void help_cb(cmder_cmd_val_t* cmdval) {
+void help_cb(cmder_cmdval_t* cmdval) {
+    if(cmdval->error != CMDER_CMDVAL_NO_ERROR) {
+        return;
+    }
+
     help_fired = true;
     assert(cmdval->cmder);
-    assert(!cmdval->opts);
-    assert(cmdval->opts_len == 0);
+    assert(!cmdval->optvals);
+    assert(cmdval->optvals_len == 0);
     int* ctx = (int*) cmdval->context;
     assert(ctx && ctx == &data && *ctx == data);
     assert(*ctx == 1337);
@@ -23,13 +27,19 @@ void help_cb(cmder_cmd_val_t* cmdval) {
 static bool capture_extra_arg0 = false;
 static int echo_extra_args_len = 0;
 static char* echo_extra_arg0;
+static const void* captured_echo_run_context;
 
-void echo_cb(cmder_cmd_val_t* cmdval) {
+void echo_cb(cmder_cmdval_t* cmdval) {
+    if(cmdval->error != CMDER_CMDVAL_NO_ERROR) {
+        return;
+    }
+
     echo_fired = true;
+    captured_echo_run_context = cmdval->run_context;
     assert(cmdval->cmder);
-    assert(cmdval->opts);
-    assert(cmdval->opts_len == 1);
-    cmder_opt_val_t* optval;
+    assert(cmdval->optvals);
+    assert(cmdval->optvals_len == 1);
+    cmder_optval_t* optval;
     assert(cmder_get_optval(NULL, 'm', &optval) == CU_ERR_INVALID_ARG);
     assert(cmder_get_optval(cmdval, 'm', NULL) == CU_OK);
     assert(cmder_get_optval(cmdval, 'm', &optval) == CU_OK);
@@ -47,21 +57,27 @@ void echo_cb(cmder_cmd_val_t* cmdval) {
     }
 }
 
-void ok_cb(cmder_cmd_val_t* cmdval) {
+void ok_cb(cmder_cmdval_t* cmdval) {
+    if(cmdval->error != CMDER_CMDVAL_NO_ERROR) {
+        return;
+    }
+
     ok_fired = true;
     assert(cmdval->cmd);
     assert(cmdval->cmd == ok);
 }
 
-void null_cb(cmder_cmd_val_t* cmdval) { (void)(cmdval); /* noop */ }
+void null_cb(cmder_cmdval_t* cmdval) { (void)(cmdval); /* noop */ }
 
 static void test_getoopts(cmder_handle_t cmder);
 static void test_args();
 static void test_args_ptrs();
+static void test_error_callback();
 
 int main() {
     test_args();
     test_args_ptrs();
+    test_error_callback();
 
     cmder_handle_t cmder = NULL;
 
@@ -92,14 +108,30 @@ int main() {
     assert(echo);
 
     assert(cmder_add_vopt(echo, &(cmder_opt_t){
+        .name = '?'
+    }) == CU_ERR_CMDER_INVALID_OPT_NAME);
+
+    assert(cmder_add_vopt(echo, &(cmder_opt_t){
+        .name = ':'
+    }) == CU_ERR_CMDER_INVALID_OPT_NAME);
+
+    assert(cmder_add_vopt(echo, &(cmder_opt_t){
+        .name = '+'
+    }) == CU_ERR_CMDER_INVALID_OPT_NAME);
+
+    assert(cmder_add_vopt(echo, &(cmder_opt_t){
         .name = 'm',
         .is_arg = true
-    }) == 0);
+    }) == CU_OK);
 
     assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ 
         .name = "ok",
         .callback = &ok_cb
     }, &ok) == CU_OK);
+
+    assert(cmder_add_vopt(ok, &(cmder_opt_t){
+        .name = '1' // alphanumerics are allowed
+    }) == CU_OK);
 
     assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){
         .name = "help",
@@ -111,20 +143,26 @@ int main() {
     // no callback provided
     assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){ .name = "kkk" }) == CU_ERR_INVALID_ARG);
 
-    assert(cmder_run(cmder, "") != CU_OK); // no command
-    assert(cmder_run(cmder, "+") != CU_OK); // wrong cmder name
-    assert(cmder_run(cmder, "esp32") != CU_OK); // wrong cmder name
-    assert(cmder_run(cmder, "+esp32") != CU_OK); // no cmd name
-    assert(cmder_run(cmder, "+esp32 test") != CU_OK); // test cmd does not exists
-    assert(cmder_run(cmder, "+esp32 echo") != CU_OK); // missing mandatory option m
+    assert(cmder_vrun(cmder, "") != CU_OK); // no command
+    assert(cmder_vrun(cmder, "+") != CU_OK); // wrong cmder name
+    assert(cmder_vrun(cmder, "esp32") != CU_OK); // wrong cmder name
+    assert(cmder_vrun(cmder, "+esp32") != CU_OK); // no cmd name
+    assert(cmder_vrun(cmder, "+esp32 test") != CU_OK); // test cmd does not exists
+    assert(cmder_vrun(cmder, "+esp32 echo") != CU_OK); // missing mandatory option m
     assert(!echo_fired);
-    assert(cmder_run(cmder, "+esp32 echo -x") != CU_OK); // unknown option
+    assert(cmder_vrun(cmder, "+esp32 echo -x") != CU_OK); // unknown option
     assert(!echo_fired);
-    assert(cmder_run(cmder, "+esp32 echo -m") != CU_OK); // m is arg and argval missing
+    assert(cmder_vrun(cmder, "+esp32 echo -m") != CU_OK); // m is arg and argval missing
     assert(!echo_fired);
     echo_fired = false;
-    assert(cmder_run(cmder, "+esp32 echo -m hey") == CU_OK); // ok
+    assert(cmder_vrun(cmder, "+esp32 echo -m hey") == CU_OK); // ok
     assert(echo_fired);
+    echo_fired = false;
+    int xx = 123;
+    assert(cmder_run(cmder, "+esp32 echo -m hey", &xx) == CU_OK); // ok
+    assert(echo_fired);
+    assert(captured_echo_run_context);
+    assert(*(int*) captured_echo_run_context == xx);
     echo_fired = false;
     assert(estr_eq(echo_message, "hey"));
     free(echo_message);
@@ -133,7 +171,7 @@ int main() {
     echo_extra_args_len = 0;
     echo_extra_arg0 = NULL;
     capture_extra_arg0 = true;
-    assert(cmder_run(cmder, "+esp32 echo -m whats up") == CU_OK); // ok, "up" extra arg
+    assert(cmder_vrun(cmder, "+esp32 echo -m whats up") == CU_OK); // ok, "up" extra arg
     assert(echo_fired);
     assert(estr_eq(echo_message, "whats"));
     assert(echo_extra_args_len == 1 && echo_extra_arg0);
@@ -143,13 +181,13 @@ int main() {
     free(echo_message);
     echo_message = NULL;
     echo_fired = false;
-    assert(cmder_run(cmder, "+esp32 echo -- -m hey") != CU_OK); // parsing terminated with --, missing m
+    assert(cmder_vrun(cmder, "+esp32 echo -- -m hey") != CU_OK); // parsing terminated with --, missing m
     assert(!echo_fired);
     help_fired = false;
-    assert(cmder_run(cmder, "+esp32 help") == CU_OK); // ok
+    assert(cmder_vrun(cmder, "+esp32 help") == CU_OK); // ok
     assert(help_fired);
     ok_fired = false;
-    assert(cmder_run(cmder, "+esp32 ok") == CU_OK); // ok
+    assert(cmder_vrun(cmder, "+esp32 ok") == CU_OK); // ok
     assert(ok_fired);
 
     const char* too_long_cmd = "+esp32 echo -m aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -160,17 +198,17 @@ int main() {
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     
     // default max is 512, this command is 524
-    assert(cmder_run(cmder, too_long_cmd) == CU_ERR_CMDER_CMDLINE_TOO_BIG);
+    assert(cmder_vrun(cmder, too_long_cmd) == CU_ERR_CMDER_CMDLINE_TOO_BIG);
 
     echo_fired = false;
-    assert(cmder_run(cmder, "+esp32 echo -m \"whats up\"") == CU_OK); // ok
+    assert(cmder_vrun(cmder, "+esp32 echo -m \"whats up\"") == CU_OK); // ok
     assert(echo_fired);
     assert(estr_eq(echo_message, "whats up"));
     free(echo_message);
     echo_message = NULL;
 
     echo_fired = false;
-    assert(cmder_run(cmder, "+esp32 echo -m \"this is \\\"quoted\\\" word\"") == CU_OK); // ok
+    assert(cmder_vrun(cmder, "+esp32 echo -m \"this is \\\"quoted\\\" word\"") == CU_OK); // ok
     assert(echo_fired);
     assert(estr_eq(echo_message, "this is \"quoted\" word"));
     free(echo_message);
@@ -270,8 +308,12 @@ static void test_args() {
 static int _argc;
 static char** _argv;
 
-void test_args_ptrs_cb(cmder_cmd_val_t* cmdval) {
-    cmder_opt_val_t* s = NULL;
+void test_args_ptrs_cb(cmder_cmdval_t* cmdval) {
+    if(cmdval->error != CMDER_CMDVAL_NO_ERROR) {
+        return;
+    }
+
+    cmder_optval_t* s = NULL;
     assert(cmder_get_optval(cmdval, 's', &s) == CU_OK);
     assert(s);
     assert(estr_eq(s->val, "hello world"));
@@ -295,8 +337,101 @@ static void test_args_ptrs() {
     cmder_cmd_handle_t test;
     assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "test", .callback = &test_args_ptrs_cb }, &test) == CU_OK);
     assert(cmder_add_vopt(test, &(cmder_opt_t) { .name = 's', .is_arg = true, .is_optional = false }) == CU_OK);
-    assert(cmder_run_args(cmder, _argc, _argv) == CU_OK);
+    assert(cmder_vrun_args(cmder, _argc, _argv) == CU_OK);
 
     cu_list_free(_argv, _argc);
     assert(cmder_destroy(cmder) == CU_OK);
+}
+
+// Testing error callback handling
+
+static cmder_cmdval_err_t cmdval_err;
+static bool error_triggered = false;
+static bool error_cb_error = false;
+static char unknown_option;
+static bool capture_extra0 = false;
+static bool capture_extra1 = false;
+static bool capture_extra2 = false;
+static char* extra0;
+static char* extra1;
+static char* extra2;
+
+static void error_cb(cmder_cmdval_t* cmdval) {
+    error_triggered = true;
+    cmdval_err = cmdval->error;
+    unknown_option = '\0';
+
+    if(capture_extra0 && cmdval->extra_args_len > 0) {
+        extra0 = strdup(cmdval->extra_args[0]);
+    }
+
+    if(capture_extra1 && cmdval->extra_args_len > 1) {
+        extra1 = strdup(cmdval->extra_args[1]);
+    }
+
+    if(capture_extra2 && cmdval->extra_args_len > 2) {
+        extra2 = strdup(cmdval->extra_args[2]);
+    }
+
+    if(cmdval_err != CMDER_CMDVAL_NO_ERROR) {
+        error_cb_error = true;
+
+        if(cmdval_err == CMDER_CMDVAL_UNKNOWN_OPTION) {
+            unknown_option = cmdval->error_option_name;
+        }
+
+
+        return;
+    }
+
+    error_cb_error = false;
+    capture_extra0 =
+    capture_extra1 =
+    capture_extra2 = false;
+}
+
+static void test_error_callback() {
+    cmder_handle_t cmder = NULL;
+    assert(cmder_create(&(cmder_t){ .name = "pc" }, &cmder) == CU_OK);
+    assert(cmder);
+    cmder_cmd_handle_t error = NULL;
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "error", .callback = &error_cb }, &error) == CU_OK);
+    assert(error);
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error") == CU_OK); // it's ok to run without options
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    capture_extra0 = capture_extra1 = capture_extra2 = true;
+    assert(cmder_vrun(cmder, "pc error a b c") == CU_OK); // it's ok to run without options and with extra args
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    assert(estr_eq(extra0, "a"));
+    assert(estr_eq(extra1, "b"));
+    assert(estr_eq(extra2, "c"));
+    free(extra0);
+    free(extra1);
+    free(extra2);
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -- a b c") == CU_OK); // it's ok to run without options and with extra args
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -a") == CU_ERR_CMDER_UNKNOWN_OPTION);
+    assert(error_triggered && error_cb_error && cmdval_err == CMDER_CMDVAL_UNKNOWN_OPTION && unknown_option == 'a');
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -a -- b") == CU_ERR_CMDER_UNKNOWN_OPTION);
+    assert(error_triggered && error_cb_error && cmdval_err == CMDER_CMDVAL_UNKNOWN_OPTION && unknown_option == 'a');
+    assert(cmder_add_vopt(error, &(cmder_opt_t){ .name = 'a' }) == CU_OK);
+    assert(cmder_vrun(cmder, "pc error") == CU_OK); // it's ok to run without options since "a" is a flag
+    assert(cmder_vrun(cmder, "pc error a b c") == CU_OK);
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -a") == CU_OK); // it's ok to run with "a" option now
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
+
+    // continue...
+
 }

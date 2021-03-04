@@ -120,6 +120,8 @@ cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoopts) {
     i++; \
 }
 
+// todo: ignore "-" if line is: a b - c d
+
 cu_err_t cmder_args(const char* cmdline, int* argc, char*** out_argv) {
     if(!cmdline || !argc || !out_argv) {
         return CU_ERR_INVALID_ARG;
@@ -305,6 +307,10 @@ cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handl
     if(!cmd || !cmd->cmder || !opt)
         return CU_ERR_INVALID_ARG;
 
+    if(!estr_is_alnum(opt->name)) {
+        return CU_ERR_CMDER_INVALID_OPT_NAME;
+    }
+
     if(_get_opt_by_name(cmd, opt->name)) // already exist
         return CU_ERR_CMDER_OPT_EXIST;
     
@@ -339,18 +345,18 @@ cu_err_t cmder_add_vopt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
     return cmder_add_opt(cmd, opt, NULL);
 }
 
-cu_err_t cmder_get_optval(cmder_cmd_val_t* cmdval, char optname, cmder_opt_val_t** out_optval) {
+cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t** out_optval) {
     if(!cmdval) {
         return CU_ERR_INVALID_ARG;
     }
 
-    cmder_opt_val_t** optvals = cmdval->opts;
+    cmder_optval_t** optvals = cmdval->optvals;
 
-    if(!optvals || cmdval->opts_len <= 0) {
+    if(!optvals || cmdval->optvals_len <= 0) {
         return CU_ERR_CMDER_NO_OPTVALS;
     }
 
-    for(uint16_t i = 0; i < cmdval->opts_len; i++) {
+    for(uint16_t i = 0; i < cmdval->optvals_len; i++) {
         if(optvals[i]->opt->name == optname) {
             if(out_optval) {
                 *out_optval = optvals[i];
@@ -363,7 +369,7 @@ cu_err_t cmder_get_optval(cmder_cmd_val_t* cmdval, char optname, cmder_opt_val_t
     return CU_ERR_NOT_FOUND;
 }
 
-static void _optval_free(cmder_opt_val_t* optval) {
+static void _optval_free(cmder_optval_t* optval) {
     if(!optval)
         return;
     
@@ -373,78 +379,111 @@ static void _optval_free(cmder_opt_val_t* optval) {
     free(optval);
 }
 
-static void _cmdval_free(cmder_cmd_val_t* cmdval) {
+static void _cmdval_free(cmder_cmdval_t* cmdval) {
     if(!cmdval)
         return;
     
     cmdval->cmder = NULL;
     cmdval->context = NULL;
-    cu_list_tfreex(cmdval->opts, uint16_t, cmdval->opts_len, _optval_free);
-    cmdval->extra_args = NULL;
+    cu_list_tfreex(cmdval->optvals, uint16_t, cmdval->optvals_len, _optval_free);
+    cmdval->extra_args = NULL; // don't free
     cmdval->extra_args_len = 0;
     free(cmdval);
 }
 
-static bool _mandatory_opts_are_set(cmder_opt_val_t** optvals, uint16_t len) {
+static cmder_opt_handle_t _first_mandatory_opt_which_is_not_set(cmder_optval_t** optvals, uint16_t len) {
+    if(!optvals || len == 0) {
+        return NULL;
+    }
+
     cmder_opt_handle_t opt;
 
     for(uint16_t i = 0; i < len; i++) {
         opt = optvals[i]->opt;
 
         if(opt->is_arg && !opt->is_optional && !optvals[i]->val) {
-            return false;
+            return opt;
         }
     }
 
-    return true;
+    return NULL;
 }
 
-cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv) {
+static int _option_index(int argc, char** argv) {
+    if(argc <= 1 || !argv) { // opts start from 1
+        return -1;
+    }
+
+    for(int i = 1; i < argc; i++) {
+        if(argv[i][0] == '-') {
+            return argv[i][1] == '-' ? -1 : i;
+        }
+    }
+
+    return -1;
+}
+
+cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv, const void* run_context) {
     if(!cmder) {
         return CU_ERR_INVALID_ARG;
     }
+
+    // todo: everyhting must be trimmed 
+    // todo: option pieces must be > 1... cannot be just "-" (extra can be 1)
+    // (maybe make other function (prefix _safe) because i call this with every trimmed already)?
 
     if(!argv || argc <= 0) { // nothing to do
         return CU_ERR_CMDER_IGNORE;
     }
 
     cu_err_t err = CU_OK;
-
     cmder_cmd_handle_t cmd = NULL;
 
     if(cmder_get_cmd_by_name(cmder, argv[0], &cmd) != CU_OK) { // argv[0] is cmd name
         return CU_ERR_CMDER_CMD_NOEXIST;
     }
     
-    cmder_cmd_val_t* cmdval = cu_ctor(cmder_cmd_val_t,
+    cmder_cmdval_t* cmdval = cu_ctor(cmder_cmdval_t,
         .cmder = cmder,
         .cmd = cmd,
-        .context = cmder->context
+        .context = cmder->context,
+        .run_context = run_context,
+        .error = CMDER_CMDVAL_NO_ERROR
     );
 
     if(!cmdval) {
         goto _nomem;
     }
 
-    if(cmd->opts_len <= 0) {
-        cmd->callback(cmdval);
-        _cmdval_free(cmdval);
-        return CU_OK;
+    if(cmd->opts_len == 0) { // cmd has no added opts
+        int oind = _option_index(argc, argv); // +1 for skip cmd name item
+
+        if(oind == -1) { // no opts in array
+            // todo: attach extra args
+            cmd->callback(cmdval);
+            goto _return;
+        }
+
+        err = CU_ERR_CMDER_UNKNOWN_OPTION;
+        cmdval->error = CMDER_CMDVAL_UNKNOWN_OPTION;
+        cmdval->error_option_name = argv[oind][1]; // todo: its prechecked that every option must be >1 ???
+        goto _error;
     }
 
-    cmdval->opts_len = cmd->opts_len;
-    cmdval->opts = calloc(cmdval->opts_len, sizeof(cmder_opt_val_t*));
+    // make one optval in cmdval for every opt in cmd
+    cmdval->optvals_len = cmd->opts_len;
+    cmdval->optvals = calloc(cmdval->optvals_len, sizeof(cmder_optval_t*));
 
-    if(!cmdval->opts) {
+    if(!cmdval->optvals) {
         goto _nomem;
     }
 
     for(uint16_t i = 0; i < cmd->opts_len; i++) {
-        cmdval->opts[i] = cu_ctor(cmder_opt_val_t,
+        cmdval->optvals[i] = cu_ctor(cmder_optval_t,
             .opt = cmd->opts[i]
         );
 
-        if(!cmdval->opts[i]) {
+        if(!cmdval->optvals[i]) {
             goto _nomem;
         }
     }
@@ -453,21 +492,25 @@ cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv) {
     optind = 0;
 
     int o;
+
     while((o = getopt(argc, argv, cmd->getoopts)) != -1) {
         if(o == ':') {
-            // value argument missing for option: optopt
-            err = CU_ERR_CMDER_OPT_ARG_MISSING;
-            break;
+            err = CU_ERR_CMDER_OPT_VAL_MISSING;
+            cmdval->error = CMDER_CMDVAL_OPTION_VALUE_MISSING;
+            cmdval->error_option_name = optopt;
+            goto _error;
         } else if(o == '?') {
-            // unknown option: optopt
             err = CU_ERR_CMDER_UNKNOWN_OPTION;
-            break;
+            cmdval->error = CMDER_CMDVAL_UNKNOWN_OPTION;
+            cmdval->error_option_name = optopt;
+            goto _error;
         } else {
-            cmder_opt_val_t* optval = NULL;
+            cmder_optval_t* optval = NULL;
+
             if(cmder_get_optval(cmdval, o, &optval) != CU_OK) {
                 // interesting, but not found.. this should not happen
                 err = CU_FAIL;
-                break;
+                goto _return;
             }
 
             if(optval->opt->is_arg) {
@@ -478,38 +521,50 @@ cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv) {
         }
     }
 
-    if(err == CU_OK) {
-        if(_mandatory_opts_are_set(cmdval->opts, cmdval->opts_len)) {
-            cmdval->extra_args_len = 0;
-            for(int i = optind; i < argc; i++, cmdval->extra_args_len++);
+    cmder_opt_handle_t notset_opt = _first_mandatory_opt_which_is_not_set(cmdval->optvals, cmdval->optvals_len);
 
-            if(cmdval->extra_args_len > 0) {
-                cmdval->extra_args = calloc(cmdval->extra_args_len, sizeof(char*));
+    if(notset_opt) {
+        err = CU_ERR_CMDER_OPT_VAL_MISSING;
+        cmdval->error = CMDER_CMDVAL_OPTION_VALUE_MISSING;
+        cmdval->error_option_name = notset_opt->name;
+        goto _error;
+    }
 
-                if(!cmdval->extra_args) {
-                    goto _nomem;
-                }
+    cmdval->extra_args_len = 0;
+    for(int i = optind; i < argc; i++, cmdval->extra_args_len++);
 
-                for(int i = optind, j = 0; i < argc; i++, j++) {
-                    cmdval->extra_args[j] = argv[i];
-                }
-            }
+    if(cmdval->extra_args_len > 0) {
+        cmdval->extra_args = calloc(cmdval->extra_args_len, sizeof(char*));
 
-            cmd->callback(cmdval);
-        } else {
-            err = CU_ERR_CMDER_ARGS_NOT_SET;
+        if(!cmdval->extra_args) {
+            goto _nomem;
+        }
+
+        for(int i = optind, j = 0; i < argc; i++, j++) {
+            cmdval->extra_args[j] = argv[i];
         }
     }
 
-    goto _free;
+    cmd->callback(cmdval);
+    goto _return;
+_error:
+    cu_list_tfreex(cmdval->optvals, uint16_t, cmdval->optvals_len, _optval_free);
+    cmdval->extra_args = NULL; // don't free
+    cmdval->extra_args_len = 0;
+    cmd->callback(cmdval);
+    goto _return;
 _nomem:
     err = CU_ERR_NO_MEM;
-_free:
+_return:
     _cmdval_free(cmdval);
     return err;
 }
 
-cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline) {
+cu_err_t cmder_vrun_args(cmder_handle_t cmder, int argc, char** argv) {
+    return cmder_run_args(cmder, argc, argv, NULL);
+}
+
+cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline, const void* run_context) {
     if(!cmder || !cmdline)
         return CU_ERR_INVALID_ARG;
 
@@ -538,10 +593,14 @@ cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline) {
         return err;
     }
 
-    err = cmder_run_args(cmder, argc, argv);
+    err = cmder_run_args(cmder, argc, argv, run_context);
     cu_list_free(argv, argc);
 
     return err;
+}
+
+cu_err_t cmder_vrun(cmder_handle_t cmder, const char* cmdline) {
+    return cmder_run(cmder, cmdline, NULL);
 }
 
 cu_err_t cmder_destroy(cmder_handle_t cmder) {
