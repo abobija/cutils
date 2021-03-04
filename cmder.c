@@ -759,6 +759,79 @@ cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t**
     return CU_ERR_NOT_FOUND;
 }
 
+cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, size_t* out_len) {
+    if(!cmdval || !out_errstr || cmdval->error == CMDER_CMDVAL_NO_ERROR || !cmdval->cmd) {
+        return CU_ERR_INVALID_ARG;
+    }
+
+    size_t cmdname_len = strlen(cmdval->cmd->name);
+    size_t len = cmdname_len;
+    len += 2; // ": "
+
+    switch (cmdval->error)
+    {
+        case CMDER_CMDVAL_UNKNOWN_OPTION:
+            len += 7; // "invalid"
+            break;
+        
+        case CMDER_CMDVAL_OPTION_VALUE_MISSING:
+            len += 17; // "missing value for"
+            break;
+
+        case CMDER_CMDVAL_NO_ERROR:
+            // ignore
+            break;
+    }
+
+    len += 14; // " option -- 'x'"
+    len++; // "\0"
+
+    char* errorstr = malloc(len * sizeof(char));
+
+    if(!errorstr) {
+        if(out_len) { *out_len = 0; }
+        *out_errstr = NULL;
+        return CU_ERR_NO_MEM;
+    }
+
+    char* ptr = errorstr;
+    memcpy(ptr, cmdval->cmd->name, cmdname_len);
+    ptr += cmdname_len;
+    *ptr++ = ':';
+    *ptr++ = ' ';
+
+    switch (cmdval->error)
+    {
+        case CMDER_CMDVAL_UNKNOWN_OPTION:
+            memcpy(ptr, "invalid", 7);
+            ptr += 7;
+            break;
+        
+        case CMDER_CMDVAL_OPTION_VALUE_MISSING:
+            memcpy(ptr, "missing value for", 17);
+            ptr += 17;
+            break;
+
+        case CMDER_CMDVAL_NO_ERROR:
+            // ignore
+            break;
+    }
+
+    memcpy(ptr, " option -- '", 12);
+    ptr += 12;
+    *ptr++ = cmdval->error_option_name;
+    *ptr++ = '\'';
+    *ptr = '\0';
+
+    *out_errstr = errorstr;
+
+    if(out_len) {
+        *out_len = ptr - errorstr;
+    }
+
+    return CU_OK;
+}
+
 static void _optval_free(cmder_optval_t* optval) {
     if(!optval)
         return;

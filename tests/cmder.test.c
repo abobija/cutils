@@ -489,7 +489,15 @@ static void error_cb(cmder_cmdval_t* cmdval) {
         if(cmdval_err == CMDER_CMDVAL_UNKNOWN_OPTION) {
             unknown_option = cmdval->error_option_name;
         }
-
+        
+        char* errstr = NULL;
+        size_t errstr_len = 0;
+        assert(cmder_cmdval_errstr(cmdval, &errstr, &errstr_len) == CU_OK);
+        assert(errstr);
+        assert(errstr_len > 0);
+        assert(strlen(errstr) == errstr_len);
+        //printf("%s\n", errstr);
+        free(errstr);
 
         return;
     }
@@ -696,4 +704,23 @@ static void test_error_callback() {
     assert(estr_eq(extra0, "\""));
     free(extra0);
     extra0 = NULL;
+
+    // mandatory arg missing test
+
+    assert(cmder_add_vopt(error, &(cmder_opt_t){ .name = 'u', .is_arg = true }) == CU_OK);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error") == CU_ERR_CMDER_OPT_VAL_MISSING);
+    assert(error_triggered && error_cb_error && cmdval_err == CMDER_CMDVAL_OPTION_VALUE_MISSING);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -u") == CU_ERR_CMDER_OPT_VAL_MISSING);
+    assert(error_triggered && error_cb_error && cmdval_err == CMDER_CMDVAL_OPTION_VALUE_MISSING);
+
+    cmdval_err = CMDER_CMDVAL_NO_ERROR;
+    error_triggered = error_cb_error = false;
+    assert(cmder_vrun(cmder, "pc error -u xx") == CU_OK);
+    assert(error_triggered && !error_cb_error && cmdval_err == CMDER_CMDVAL_NO_ERROR);
 }

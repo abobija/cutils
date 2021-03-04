@@ -91,6 +91,7 @@ cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline, const void* run_co
 cu_err_t cmder_vrun(cmder_handle_t cmder, const char* cmdline);
 cu_err_t cmder_get_cmd_by_name(cmder_handle_t cmder, const char* cmd_name, cmder_cmd_handle_t* out_cmd_handle);
 cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t** out_optval);
+cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, size_t* out_len);
 cu_err_t cmder_destroy(cmder_handle_t cmder);
 
 #ifdef __cplusplus
