@@ -20,6 +20,12 @@ struct cmder_handle {
     uint16_t cmds_len;
 };
 
+typedef enum {
+    CMDER_OPT_FLAG,
+    CMDER_OPT_OPTIONAL_ARG,
+    CMDER_OPT_MANDATORY_ARG
+} cmder_opt_type_t;
+
 cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
     if(!config || !out_handle)
         return CU_ERR_INVALID_ARG;
@@ -338,6 +344,203 @@ cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handl
 
 cu_err_t cmder_add_vopt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
     return cmder_add_opt(cmd, opt, NULL);
+}
+
+static cu_err_t _cmd_options(cmder_cmd_handle_t cmd, cmder_opt_type_t type, cmder_opt_handle_t** out_opts, uint16_t* out_len) {
+    if(!cmd || !out_opts || !out_len) {
+        return CU_ERR_INVALID_ARG;
+    }
+    
+    *out_opts = NULL;
+    *out_len = 0;
+
+    cmder_opt_handle_t* opts = NULL;
+    uint16_t len = 0;
+
+    for(uint16_t i = 0; i < cmd->opts_len; i++) {
+        if(cmd->opts[i]->is_arg) {
+            if(cmd->opts[i]->is_optional && type == CMDER_OPT_OPTIONAL_ARG) {
+                len++;
+            } else if(!cmd->opts[i]->is_optional && type == CMDER_OPT_MANDATORY_ARG) {
+                len++;
+            }
+        } else if(type == CMDER_OPT_FLAG) {
+            len++;
+        }
+    }
+
+    if(len == 0) {
+        return CU_OK;
+    }
+
+    opts = malloc(len * sizeof(cmder_opt_handle_t));
+
+    if(!opts) {
+        return CU_ERR_NO_MEM;
+    }
+
+    for(uint16_t i = 0, j = 0; i < cmd->opts_len; i++) {
+        if(cmd->opts[i]->is_arg) {
+            if(cmd->opts[i]->is_optional && type == CMDER_OPT_OPTIONAL_ARG) {
+                opts[j++] = cmd->opts[i];
+            } else if(!cmd->opts[i]->is_optional && type == CMDER_OPT_MANDATORY_ARG) {
+                opts[j++] = cmd->opts[i];
+            }
+        } else if(type == CMDER_OPT_FLAG) {
+            opts[j++] = cmd->opts[i];
+        }
+    }
+
+    *out_opts = opts;
+    *out_len = len;
+
+    return CU_OK;
+}
+
+cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, size_t* out_len) {
+    if(!cmd || !out_signature) {
+        return CU_ERR_INVALID_ARG;
+    }
+
+    char* signature = NULL;
+    *out_signature = NULL;
+
+    if(out_len) {
+        *out_len = 0;
+    }
+
+    cu_err_t err = CU_OK;
+    size_t name_len = strlen(cmd->name);
+
+    if(name_len == 0) {
+        return CU_ERR_INVALID_ARG;
+    }
+
+    size_t len = name_len;
+    len++; // space
+
+    uint16_t flags_len = 0;
+    uint16_t oargs_len = 0;
+    uint16_t margs_len = 0;
+    cmder_opt_handle_t* opts = NULL;
+    err = _cmd_options(cmd, CMDER_OPT_FLAG, &opts, &flags_len);
+
+    if(err != CU_OK) {
+        if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
+    }
+    
+    if(flags_len > 0) {
+        len += 9; // "[OPTION] "
+
+        if(flags_len > 1) {
+            len += 4; // "... "
+        }
+    }
+
+    free(opts);
+    err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, &oargs_len);
+
+    if(err != CU_OK) {
+        if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
+    }
+
+    for(uint16_t i = 0; i < oargs_len; i++) {
+        len += 10; // "[-x xval] "
+    }
+
+    free(opts);
+    err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, &margs_len);
+
+    if(err != CU_OK) {
+        if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
+    }
+
+    for(uint16_t i = 0; i < margs_len; i++) {
+        len += 8; // "-x xval "
+    }
+
+    free(opts);
+    opts = NULL;
+
+    len--; // last space
+
+    signature = malloc(len + 1);
+
+    if(!signature) {
+        goto _nomem;
+    }
+
+    char* ptr = signature;
+    memcpy(ptr, cmd->name, name_len);
+    ptr += name_len;
+    *ptr++ = ' ';
+
+    if(flags_len > 0) {
+        memcpy(ptr, "[OPTION] ", 9);
+        ptr += 9;
+
+        if(flags_len > 1) {
+            memcpy(ptr, "... ", 4);
+            ptr += 4;
+        }
+    }
+
+    if(oargs_len > 0) {
+        err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, &oargs_len);
+
+        if(err != CU_OK) {
+            if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
+        }
+
+        for(uint16_t i = 0; i < oargs_len; i++) {
+            *ptr++ = '[';
+            *ptr++ = '-';
+            *ptr++ = opts[i]->name;
+            *ptr++ = ' ';
+            *ptr++ = opts[i]->name;
+            memcpy(ptr, "val] ", 5);
+            ptr += 5;
+        }
+
+        free(opts);
+        opts = NULL;
+    }
+
+    if(margs_len > 0) {
+        err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, &margs_len);
+
+        if(err != CU_OK) {
+            if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; }
+        }
+
+        for(uint16_t i = 0; i < margs_len; i++) {
+            *ptr++ = '-';
+            *ptr++ = opts[i]->name;
+            *ptr++ = ' ' ;
+            *ptr++ = opts[i]->name;
+            memcpy(ptr, "val ", 4);
+            ptr += 4;
+        }
+
+        free(opts);
+        opts = NULL;
+    }
+
+    *--ptr = '\0'; // replace last space
+
+    *out_signature = signature;
+
+    if(out_len) {
+        *out_len = ptr - signature;
+    }
+
+    goto _return;
+_nomem:
+    err = CU_ERR_NO_MEM;
+    free(signature);
+_return:
+    free(opts);
+    return err;
 }
 
 cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t** out_optval) {

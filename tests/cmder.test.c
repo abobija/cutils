@@ -2,6 +2,7 @@
 #include "../estr.h"
 #include "../cutils.h"
 #include <assert.h>
+#include <stdio.h>
 
 static int data = 1337;
 static bool help_fired = false;
@@ -74,8 +75,10 @@ static void test_args();
 static void test_args_ptrs();
 static void test_error_callback();
 static void test_run_raw_args();
+static void test_signatures();
 
 int main() {
+    test_signatures();
     test_run_raw_args();
     test_args();
     test_args_ptrs();
@@ -220,6 +223,56 @@ int main() {
     assert(cmder_destroy(cmder) == CU_OK);
 
     return 0;
+}
+
+static void test_signatures() {
+    cmder_handle_t cmder = NULL;
+    assert(cmder_create(&(cmder_t){ .name = "esp" }, &cmder) == CU_OK && cmder);
+    cmder_cmd_handle_t cmd = NULL;
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "touch", .callback = &null_cb }, &cmd) == CU_OK);
+    assert(cmd);
+
+    char* sig = NULL;
+    size_t sig_len;
+    assert(cmder_cmd_signature(cmd, &sig, &sig_len) == CU_OK);
+    assert(sig && sig_len == strlen("touch") && estr_eq(sig, "touch"));
+    free(sig);
+
+    assert(cmder_add_vopt(cmd, &(cmder_opt_t){ .name = 'a' }) == CU_OK);
+    assert(cmder_cmd_signature(cmd, &sig, &sig_len) == CU_OK);
+    assert(sig && sig_len == strlen("touch [OPTION]") && estr_eq(sig, "touch [OPTION]"));
+    free(sig);
+
+    assert(cmder_add_vopt(cmd, &(cmder_opt_t){ .name = 'f' }) == CU_OK);
+    assert(cmder_cmd_signature(cmd, &sig, &sig_len) == CU_OK);
+    assert(sig && sig_len == strlen("touch [OPTION] ...") && estr_eq(sig, "touch [OPTION] ..."));
+    free(sig);
+
+    assert(cmder_add_vopt(cmd, &(cmder_opt_t){ .name = 'b', .is_arg = true, .is_optional = true }) == CU_OK);
+    assert(cmder_cmd_signature(cmd, &sig, &sig_len) == CU_OK);
+    assert(sig && sig_len == strlen("touch [OPTION] ... [-b bval]") 
+        && estr_eq(sig, "touch [OPTION] ... [-b bval]"));
+    free(sig);
+
+    assert(cmder_add_vopt(cmd, &(cmder_opt_t){ .name = 'c', .is_arg = true, .is_optional = true }) == CU_OK);
+    assert(cmder_cmd_signature(cmd, &sig, &sig_len) == CU_OK);
+    assert(sig && sig_len == strlen("touch [OPTION] ... [-b bval] [-c cval]") 
+        && estr_eq(sig, "touch [OPTION] ... [-b bval] [-c cval]"));
+    free(sig);
+
+    assert(cmder_add_vopt(cmd, &(cmder_opt_t){ .name = 'd', .is_arg = true, .is_optional = false }) == CU_OK);
+    assert(cmder_cmd_signature(cmd, &sig, &sig_len) == CU_OK);
+    assert(sig && sig_len == strlen("touch [OPTION] ... [-b bval] [-c cval] -d dval") 
+        && estr_eq(sig, "touch [OPTION] ... [-b bval] [-c cval] -d dval"));
+    free(sig);
+
+    assert(cmder_add_vopt(cmd, &(cmder_opt_t){ .name = 'e', .is_arg = true, .is_optional = false }) == CU_OK);
+    assert(cmder_cmd_signature(cmd, &sig, &sig_len) == CU_OK);
+    assert(sig && sig_len == strlen("touch [OPTION] ... [-b bval] [-c cval] -d dval -e eval") 
+        && estr_eq(sig, "touch [OPTION] ... [-b bval] [-c cval] -d dval -e eval"));
+    free(sig);
+
+    //printf("%ld: \"%s\"\n", sig_len, sig);
 }
 
 static void test_run_raw_args() {
