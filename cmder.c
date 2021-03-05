@@ -466,7 +466,7 @@ _return:
  * 
  * @return CU_OK on success
  */
-static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, size_t* out_len, cmder_gopts_t** o_gopts, bool gopts_just_lengths) {
+static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, uint* out_len, cmder_gopts_t** o_gopts, bool gopts_just_lengths) {
     if(!cmd || !out_len) {
         return CU_ERR_INVALID_ARG;
     }
@@ -474,13 +474,13 @@ static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, size_t* out_len, cmd
     *out_len = 0;
 
     cu_err_t err = CU_OK;
-    size_t name_len = strlen(cmd->name);
+    uint name_len = strlen(cmd->name);
 
     if(name_len == 0) {
         return CU_ERR_INVALID_ARG;
     }
 
-    size_t len = name_len;
+    uint len = name_len;
     cmder_gopts_t* gopts = NULL;
 
     cu_err_check(_cmd_gopts(cmd, &gopts, gopts_just_lengths));
@@ -524,7 +524,7 @@ _return:
  * 
  * @return CU_OK on success
  */
-static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, size_t len, cmder_gopts_t* gopts) {
+static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, uint len, cmder_gopts_t* gopts) {
     if(!cmd || !out_signature || len == 0 || !gopts) {
         return CU_ERR_INVALID_ARG;
     }
@@ -538,7 +538,7 @@ static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, 
     cu_mem_check(signature = *out_signature ? *out_signature : malloc(len + 1));
     ptr = signature;
 
-    size_t name_len = strlen(cmd->name);
+    uint name_len = strlen(cmd->name);
     memcpy(ptr, cmd->name, name_len);
     ptr += name_len;
     *ptr++ = ' ';
@@ -575,7 +575,7 @@ static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, 
     *--ptr = '\0'; // replace last space
 
     // make sure that ptr is at exact the same place where it should be
-    assert(ptr - signature == (long int) len);
+    assert(ptr - signature == len);
 
     goto _return;
 _error:
@@ -587,14 +587,14 @@ _return:
     return err;
 }
 
-cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, size_t* out_len) {
+cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, uint* out_len) {
     if(!cmd || !out_signature) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err;
     char* signature = NULL;
-    size_t len = 0;
+    uint len = 0;
     cmder_gopts_t* gopts = NULL;
     cu_err_check(_calc_signature_len(cmd, &len, &gopts, false));
 
@@ -613,13 +613,13 @@ _return:
     return err;
 }
 
-static cu_err_t _calc_manual_len(cmder_cmd_handle_t cmd, size_t* out_len, size_t* out_sig_len, cmder_gopts_t** o_gopts) {
+static cu_err_t _calc_manual_len(cmder_cmd_handle_t cmd, uint* out_len, uint* out_sig_len, cmder_gopts_t** o_gopts) {
     if(!cmd) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err = CU_OK;
-    size_t len = 0, sig_len = 0;
+    uint len = 0, sig_len = 0;
     cmder_gopts_t* gopts = NULL;
 
     cu_err_check(_calc_signature_len(cmd, &sig_len, &gopts, false));
@@ -767,13 +767,13 @@ _return:
     return err;
 }
 
-cu_err_t cmder_cmd_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t* out_len) {
+cu_err_t cmder_cmd_manual(cmder_cmd_handle_t cmd, char** out_manual, uint* out_len) {
     if(!cmd || !out_manual) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err;
-    size_t len = 0, sig_len = 0;
+    uint len = 0, sig_len = 0;
     cmder_gopts_t* gopts = NULL;
     char* manual = NULL;
 

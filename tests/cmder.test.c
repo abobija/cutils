@@ -251,7 +251,7 @@ static void test_man() {
     }) == CU_OK);
 
     char* manual = NULL;
-    size_t manual_len = 0;
+    uint manual_len = 0;
     assert(cmder_cmd_manual(cmd, &manual, &manual_len) == CU_OK);
     assert(manual);
     assert(manual_len == strlen(manual));
@@ -281,7 +281,7 @@ static void test_signatures() {
     assert(cmd);
 
     char* sig = NULL;
-    size_t sig_len;
+    uint sig_len;
     assert(cmder_cmd_signature(cmd, &sig, &sig_len) == CU_OK);
     assert(sig && sig_len == strlen("touch") && estr_eq(sig, "touch"));
     free(sig);
