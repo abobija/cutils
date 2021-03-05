@@ -84,7 +84,7 @@ typedef int cu_err_t;
     if((err = (EXP)) != CU_OK) { return err; }
 
 #define cu_mem_check(EXP) \
-    if(!(EXP)) { goto _nomem; }
+    if(!(EXP)) { err = CU_ERR_NO_MEM; goto _error; }
 
 #define cu_mem_checkr(EXP) \
     if(!(EXP)) { return CU_ERR_NO_MEM; }

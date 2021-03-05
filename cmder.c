@@ -29,20 +29,30 @@ typedef enum {
 } cmder_opt_type_t;
 
 typedef struct {
-    cmder_opt_type_t type;
-    cmder_opt_handle_t* opts;
-    uint16_t len;
-} cmder_opts_group_t;
+    cmder_opt_handle_t* flags; /*<! Options */
+    uint16_t flags_len;        /*<! Options length */
+    cmder_opt_handle_t* oargs; /*<! Optional args */
+    uint16_t oargs_len;        /*<! Optional args length */
+    cmder_opt_handle_t* margs; /*<! Mandatory args */
+    uint16_t margs_len;        /*<! Mandatory args length */
+} cmder_gopts_t;
 
-static void _free_opts_group(cmder_opts_group_t* group) {
-    if(!group) {
+static void _free_gopts(cmder_gopts_t* gopts) {
+    if(!gopts) {
         return;
     }
 
-    free(group->opts); // don't free individual opt
-    group->opts = NULL;
-    group->len = 0;
-    free(group);
+    // don't free individual opts
+    free(gopts->flags);
+    gopts->flags = NULL;
+    gopts->flags_len = 0;
+    free(gopts->oargs);
+    gopts->oargs = NULL;
+    gopts->oargs_len = 0;
+    free(gopts->margs);
+    gopts->margs = NULL;
+    gopts->margs_len = 0;
+    free(gopts);
 }
 
 cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
@@ -443,122 +453,37 @@ static cu_err_t _cmd_options(cmder_cmd_handle_t cmd, cmder_opt_type_t type, cmde
     return CU_OK;
 }
 
-static cu_err_t _cmd_create_gopt(cmder_cmd_handle_t cmd, cmder_opt_type_t type, bool just_length, cmder_opts_group_t** out_group) {
-    if(!cmd || !out_group) {
+static cu_err_t _cmd_gopts(cmder_cmd_handle_t cmd, cmder_gopts_t** out_gopts, bool just_lengths) {
+    if(!cmd || !out_gopts) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err = CU_OK;
-    cmder_opts_group_t* group = NULL;
-    cu_mem_check(group = malloc(sizeof(cmder_opts_group_t)));
+    cmder_gopts_t* gopts = NULL;
+    cu_mem_check(gopts = cu_ctor(cmder_gopts_t));
 
-    group->type = type;
-    cu_err_check(_cmd_options(cmd, type, just_length ? NULL : &group->opts, &group->len));
+    cu_err_check(_cmd_options(cmd, CMDER_OPT_FLAG, just_lengths ? NULL : &gopts->flags, &gopts->flags_len));
+    cu_err_check(_cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, just_lengths ? NULL : &gopts->oargs, &gopts->oargs_len));
+    cu_err_check(_cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, just_lengths ? NULL : &gopts->margs, &gopts->margs_len));
     
     goto _return;
-_nomem:
-    err = CU_ERR_NO_MEM;
 _error:
-    _free_opts_group(group);
-    group = NULL;
+    _free_gopts(gopts);
+    gopts = NULL;
 _return:
-    *out_group = group;
+    *out_gopts = gopts;
     return err;
-}
-
-static cu_err_t _cmd_gopts(cmder_cmd_handle_t cmd, cmder_opts_group_t*** out_groups, uint16_t* out_len, bool just_lengths) {
-    if(! cmd) {
-        return CU_ERR_INVALID_ARG;
-    }
-
-    cu_err_t err = CU_OK;
-    cmder_opts_group_t** groups = NULL;
-    uint16_t len = 0;
-
-    if(! cmd->opts || cmd->opts_len == 0) {
-        goto _return;
-    }
-
-    uint16_t flags = 0, oargs = 0, margs = 0;
-
-    for(uint16_t i = 0; i < cmd->opts_len; i++) {
-        if(! cmd->opts[i]->is_arg) {
-            flags++;
-        } else if(cmd->opts[i]->is_optional) {
-            oargs++;
-        } else {
-            margs++;
-        }
-    }
-
-    len = (flags > 0 ? 1 : 0) + (oargs > 0 ? 1 : 0) + (margs > 0 ? 1 : 0);
-
-    cu_mem_check(groups = malloc(len * sizeof(cmder_opts_group_t*)));
-
-    uint8_t i = 0;
-
-    if(flags > 0) {
-        cu_err_check(_cmd_create_gopt(cmd, CMDER_OPT_FLAG, just_lengths, &groups[i++]));
-    }
-
-    if(oargs > 0) {
-        cu_err_check(_cmd_create_gopt(cmd, CMDER_OPT_OPTIONAL_ARG, just_lengths, &groups[i++]));
-    }
-
-    if(margs > 0) {
-        cu_err_check(_cmd_create_gopt(cmd, CMDER_OPT_MANDATORY_ARG, just_lengths, &groups[i++]));
-    }
-
-    goto _return;
-_nomem:
-    err = CU_ERR_NO_MEM;
-_error:
-    cu_list_tfreex(groups, uint16_t, len, _free_opts_group);
-_return:
-    if(out_len)    { *out_len = len; }
-    if(out_groups) { *out_groups = groups; }
-    return err;
-}
-
-static cu_err_t _calc_gopts_lens(cmder_opts_group_t** groups, uint16_t len, uint16_t* flags, uint16_t* oargs, uint16_t* margs) {
-    uint16_t _flags = 0, _oargs = 0, _margs = 0;
-
-    if(groups) {
-        for(uint16_t i = 0; i < len; i++) {
-            switch(groups[i]->type) {
-                case CMDER_OPT_FLAG:
-                    _flags = groups[i]->len;
-                    break;
-
-                case CMDER_OPT_OPTIONAL_ARG:
-                    _oargs = groups[i]->len;
-                    break;
-
-                case CMDER_OPT_MANDATORY_ARG:
-                    _margs = groups[i]->len;
-                    break;
-            }
-        }
-    }
-
-    if(flags) { *flags = _flags; }
-    if(oargs) { *oargs = _oargs; }
-    if(margs) { *margs = _margs; }
-
-    return CU_OK;
 }
 
 /**
  * @param cmd command
  * @param out_len signature length
- * @param out_name_len command name length
  * @param o_gopts options groups
- * @param o_gopts_len options groups length
+ * @param gopts_just_lengths true - just lengths; false - lengths and opts
  * 
- * @return CU_OK on success, otherwise: 
- *         CU_ERR_INVALID_ARG
+ * @return CU_OK on success
  */
-static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, size_t* out_len, size_t* out_name_len, cmder_opts_group_t*** o_gopts, uint16_t* o_gopts_len) {
+static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, size_t* out_len, cmder_gopts_t** o_gopts, bool gopts_just_lengths) {
     if(!cmd || !out_len) {
         return CU_ERR_INVALID_ARG;
     }
@@ -568,54 +493,42 @@ static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, size_t* out_len, siz
     cu_err_t err = CU_OK;
     size_t name_len = strlen(cmd->name);
 
-    if(out_name_len) { *out_name_len = name_len; }
-
     if(name_len == 0) {
         return CU_ERR_INVALID_ARG;
     }
 
     size_t len = name_len;
+    cmder_gopts_t* gopts = NULL;
 
-    uint16_t flags_len = 0, oargs_len = 0, margs_len = 0;
-    cmder_opts_group_t** gopts = NULL;
-    uint16_t gopts_len = 0;
-
-    if(cmd->opts_len == 0) {
-        goto _return;
-    }
-
-    cu_err_check(_cmd_gopts(cmd, &gopts, &gopts_len, true));
-    cu_err_check(_calc_gopts_lens(gopts, gopts_len, &flags_len, &oargs_len, &margs_len));
+    cu_err_check(_cmd_gopts(cmd, &gopts, gopts_just_lengths));
 
     len++; // space
 
-    if(flags_len > 0) {
+    if(gopts->flags_len > 0) {
         len += 9; // "[OPTION] "
 
-        if(flags_len > 1) {
+        if(gopts->flags_len > 1) {
             len += 4; // "... "
         }
     }
 
-    for(uint16_t i = 0; i < oargs_len; i++) {
+    for(uint16_t i = 0; i < gopts->oargs_len; i++) {
         len += 10; // "[-x xval] "
     }
 
-    for(uint16_t i = 0; i < margs_len; i++) {
+    for(uint16_t i = 0; i < gopts->margs_len; i++) {
         len += 8; // "-x xval "
     }
 
     len--; // last space
 
-    
     goto _return;
-
 _error:
-    cu_list_tfreex(gopts, uint16_t, gopts_len, _free_opts_group);
+    _free_gopts(gopts);
+    gopts = NULL;
 _return:
     *out_len = len;
-    if(o_gopts)     { *o_gopts = gopts; } else { cu_list_tfreex(gopts, uint16_t, gopts_len, _free_opts_group); }
-    if(o_gopts_len) { *o_gopts_len = gopts_len; }
+    if(o_gopts)     { *o_gopts = gopts; } else { _free_gopts(gopts); }
     return err;
 }
 
@@ -623,77 +536,57 @@ _return:
  * @param cmd command
  * @param out_signature signature (if NULL pointer - new memory will be allocated, 
  *                      otherwise outside buffer will be used)
- * @param out_len signature lenght
  * @param len signature length
- * @param name_length command name length
- * @param flags_len number of flag options
- * @param oargs_len number of optional args
- * @param margs_len number of mandatory args
+ * @param gopts options groups (make sure to provide opts in gopts)
  * 
- * @return CU_OK on success, otherwise:
- *         CU_ERR_INVALID_ARG;
- *         CU_ERR_NO_MEM
+ * @return CU_OK on success
  */
-static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, size_t* out_len, size_t len, size_t name_len, uint16_t flags_len, uint16_t oargs_len, uint16_t margs_len) {
-    if(!cmd || !out_signature || len == 0) {
+static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, size_t len, cmder_gopts_t* gopts) {
+    if(!cmd || !out_signature || len == 0 || !gopts) {
         return CU_ERR_INVALID_ARG;
     }
 
+    cu_err_t err = CU_OK;
     char* signature = NULL;
     char* ptr = NULL;
-    cmder_opt_handle_t* opts = NULL;
-    cu_err_t err = CU_OK;
 
     // if outside pointer is not null, that's consider like buffer has been provided
     // and that buffer will be used instead of allocating new memory
     cu_mem_check(signature = *out_signature ? *out_signature : malloc(len + 1));
-
     ptr = signature;
+
+    size_t name_len = strlen(cmd->name);
     memcpy(ptr, cmd->name, name_len);
     ptr += name_len;
     *ptr++ = ' ';
 
-    if(flags_len > 0) {
+    if(gopts->flags_len > 0) {
         memcpy(ptr, "[OPTION] ", 9);
         ptr += 9;
 
-        if(flags_len > 1) {
+        if(gopts->flags_len > 1) {
             memcpy(ptr, "... ", 4);
             ptr += 4;
         }
     }
 
-    if(oargs_len > 0) {
-        cu_err_check(_cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, NULL));
-
-        for(uint16_t i = 0; i < oargs_len; i++) {
-            *ptr++ = '[';
-            *ptr++ = '-';
-            *ptr++ = opts[i]->name;
-            *ptr++ = ' ';
-            *ptr++ = opts[i]->name;
-            memcpy(ptr, "val] ", 5);
-            ptr += 5;
-        }
-
-        free(opts);
-        opts = NULL;
+    for(uint16_t i = 0; i < gopts->oargs_len; i++) {
+        *ptr++ = '[';
+        *ptr++ = '-';
+        *ptr++ = gopts->oargs[i]->name;
+        *ptr++ = ' ';
+        *ptr++ = gopts->oargs[i]->name;
+        memcpy(ptr, "val] ", 5);
+        ptr += 5;
     }
 
-    if(margs_len > 0) {
-        cu_err_check(_cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, NULL));
-
-        for(uint16_t i = 0; i < margs_len; i++) {
-            *ptr++ = '-';
-            *ptr++ = opts[i]->name;
-            *ptr++ = ' ' ;
-            *ptr++ = opts[i]->name;
-            memcpy(ptr, "val ", 4);
-            ptr += 4;
-        }
-
-        free(opts);
-        opts = NULL;
+    for(uint16_t i = 0; i < gopts->margs_len; i++) {
+        *ptr++ = '-';
+        *ptr++ = gopts->margs[i]->name;
+        *ptr++ = ' ' ;
+        *ptr++ = gopts->margs[i]->name;
+        memcpy(ptr, "val ", 4);
+        ptr += 4;
     }
 
     *--ptr = '\0'; // replace last space
@@ -702,17 +595,12 @@ static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, 
     assert(ptr - signature == (long int) len);
 
     goto _return;
-_nomem:
-    err = CU_ERR_NO_MEM;
 _error:
     free(signature);
     signature = NULL;
     len = 0;
 _return:
-    free(opts);
-    opts = NULL;
     *out_signature = signature;
-    if(out_len) { *out_len = len; }
     return err;
 }
 
@@ -722,94 +610,75 @@ cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, size_
     }
 
     cu_err_t err;
-    size_t len = 0, name_len = 0;
-    cmder_opts_group_t** gopts = NULL;
-    uint16_t gopts_len = 0;
-    cu_err_check(_calc_signature_len(cmd, &len, &name_len, &gopts, &gopts_len));
+    char* signature = NULL;
+    size_t len = 0;
+    cmder_gopts_t* gopts = NULL;
+    cu_err_check(_calc_signature_len(cmd, &len, &gopts, false));
 
-    uint16_t flags = 0, oargs = 0, margs = 0;
-    cu_err_check(_calc_gopts_lens(gopts, gopts_len, &flags, &oargs, &margs));
-
-    cu_list_tfreex(gopts, uint16_t, gopts_len, _free_opts_group);
-
-    *out_signature = NULL; // new memory will be allocated
-    cu_err_check(_create_signature(cmd, out_signature, out_len, len, name_len, flags, oargs, margs));
+    signature = NULL; // new memory will be allocated
+    cu_err_check(_create_signature(cmd, &signature, len, gopts));
 
     goto _return;
 _error:
+    free(signature);
+    signature = NULL;
+    len = 0;
 _return:
-    cu_list_tfreex(gopts, uint16_t, gopts_len, _free_opts_group);
+    _free_gopts(gopts);
+    if(out_len) { *out_len = len; }
+    *out_signature = signature;
     return err;
 }
 
-static cu_err_t _calc_manual_len(cmder_cmd_handle_t cmd, size_t* out_len, size_t* out_name_len, size_t* out_sig_len, uint16_t* out_flags_len, uint16_t* out_oargs_len, uint16_t* out_margs_len) {
+static cu_err_t _calc_manual_len(cmder_cmd_handle_t cmd, size_t* out_len, size_t* out_sig_len, cmder_gopts_t** o_gopts) {
     if(!cmd) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err = CU_OK;
-    cmder_opt_handle_t* opts = NULL;
-    size_t len = 0, sig_len = 0, name_len = 0;
-    cmder_opts_group_t** gopts = NULL;
-    uint16_t gopts_len = 0;
-    uint16_t flags_len = 0, oargs_len = 0, margs_len = 0;
+    size_t len = 0, sig_len = 0;
+    cmder_gopts_t* gopts = NULL;
 
-    cu_err_check(_calc_signature_len(cmd, &sig_len, &name_len, &gopts, &gopts_len));
-    cu_err_check(_calc_gopts_lens(gopts, gopts_len, &flags_len, &oargs_len, &margs_len));
+    cu_err_check(_calc_signature_len(cmd, &sig_len, &gopts, false));
 
     len += 7; // "Usage: "
     len += sig_len;
     len ++; // "\n"
 
-    if(margs_len > 0) {
-        cu_err_check(_cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, NULL));
-
+    if(gopts->margs_len > 0) {
         len += 16; // "Mandatory args:[NL]"
-        for(uint16_t i = 0; i < margs_len; i++) {
+        for(uint16_t i = 0; i < gopts->margs_len; i++) {
             len += 3; // "[TAB]-x"
-            if(opts[i]->description) {
+            if(gopts->margs[i]->description) {
                 len++; // [SPACE]
-                len += strlen(opts[i]->description);
+                len += strlen(gopts->margs[i]->description);
             }
             len++; // "[NL]"
         }
-
-        free(opts);
-        opts = NULL;
     }
 
-    if(oargs_len > 0) {
-        cu_err_check(_cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, NULL));
-
+    if(gopts->oargs_len > 0) {
         len += 15; // "Optional args:[NL]"
-        for(uint16_t i = 0; i < oargs_len; i++) {
+        for(uint16_t i = 0; i < gopts->oargs_len; i++) {
             len += 3; // "[TAB]-x"
-            if(opts[i]->description) {
+            if(gopts->oargs[i]->description) {
                 len++; // [SPACE]
-                len += strlen(opts[i]->description);
+                len += strlen(gopts->oargs[i]->description);
             }
             len++; // "[NL]"
         }
-
-        free(opts);
-        opts = NULL;
     }
 
-    if(flags_len > 0) {
-        cu_err_check(_cmd_options(cmd, CMDER_OPT_FLAG, &opts, NULL));
-
+    if(gopts->flags_len > 0) {
         len += 9; // "Options:[NL]"
-        for(uint16_t i = 0; i < oargs_len; i++) {
+        for(uint16_t i = 0; i < gopts->flags_len; i++) {
             len += 3; // "[TAB]-x"
-            if(opts[i]->description) {
+            if(gopts->flags[i]->description) {
                 len++; // [SPACE]
-                len += strlen(opts[i]->description);
+                len += strlen(gopts->flags[i]->description);
             }
             len++; // "[NL]"
         }
-
-        free(opts);
-        opts = NULL;
     }
 
     if(len > 0) {
@@ -818,114 +687,86 @@ static cu_err_t _calc_manual_len(cmder_cmd_handle_t cmd, size_t* out_len, size_t
 
     goto _return;
 _error:
+    _free_gopts(gopts);
+    len = 0;
 _return:
-    free(opts);
-    opts = NULL;
-    cu_list_tfreex(gopts, uint16_t, gopts_len, _free_opts_group);
-    if(out_len)       { *out_len = len; }
-    if(out_name_len)  { *out_name_len = name_len; }
-    if(out_sig_len)   { *out_sig_len = sig_len; }
-    if(out_flags_len) { *out_flags_len = flags_len; }
-    if(out_oargs_len) { *out_oargs_len = oargs_len; }
-    if(out_margs_len) { *out_margs_len = margs_len; }
+    if(out_len) { *out_len = len; }
+    if(out_sig_len) { *out_sig_len = sig_len; }
+    if(o_gopts) { *o_gopts = gopts; } else { _free_gopts(gopts); }
     return err;
 }
 
-static cu_err_t _create_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t* out_len) {
-    if(!cmd || !out_manual) {
+static cu_err_t _create_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t len, size_t sig_len, cmder_gopts_t* gopts) {
+    if(!cmd || !out_manual || !gopts) {
         return CU_ERR_INVALID_ARG;
     }
 
-    size_t len = 0, name_len = 0, sig_len = 0;
-    uint16_t flags_len = 0, oargs_len = 0, margs_len = 0;
-    cu_err_t err = _calc_manual_len(cmd, &len, &name_len,  &sig_len, &flags_len, &oargs_len, &margs_len);
-    if(err != CU_OK) { return err; }
-
-    cmder_opt_handle_t* opts = NULL;
+    cu_err_t err = CU_OK;
     char* manual = NULL;
     char* ptr = NULL;
 
-    ptr = manual = malloc(len + 1); // +1 for "\0"
-    if(!manual) { goto _nomem; }
+    cu_mem_check(manual = malloc(len + 1)); // +1 for "\0"
 
+    ptr = manual;
     memcpy(ptr, "Usage: ", 7);
     ptr += 7;
-    err = _create_signature(cmd, &ptr, NULL, sig_len, name_len, flags_len, oargs_len, margs_len);
-    if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
+    cu_err_check(_create_signature(cmd, &ptr, sig_len, gopts));
 
     ptr += sig_len;
     *ptr++ = '\n';
 
-    if(margs_len > 0) {
-        err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, NULL);
-        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
-
+    if(gopts->margs_len > 0) {
         memcpy(ptr, "Mandatory args:\n", 16);
         ptr += 16;
 
-        for(uint16_t i = 0; i < margs_len; i++) {
+        for(uint16_t i = 0; i < gopts->margs_len; i++) {
             *ptr++ = '\t';
             *ptr++ = '-';
-            *ptr++ = opts[i]->name;
-            if(opts[i]->description) {
+            *ptr++ = gopts->margs[i]->name;
+            if(gopts->margs[i]->description) {
                 *ptr++ = ' ';
-                size_t _desc_len = strlen(opts[i]->description);
-                memcpy(ptr, opts[i]->description, _desc_len);
+                size_t _desc_len = strlen(gopts->margs[i]->description);
+                memcpy(ptr, gopts->margs[i]->description, _desc_len);
                 ptr += _desc_len;
             }
             *ptr++ = '\n';
         }
-
-        free(opts);
-        opts = NULL;
     }
 
-    if(oargs_len > 0) {
-        err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, NULL);
-        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
-
+    if(gopts->oargs_len > 0) {
         memcpy(ptr, "Optional args:\n", 15);
         ptr += 15;
 
-        for(uint16_t i = 0; i < oargs_len; i++) {
+        for(uint16_t i = 0; i < gopts->oargs_len; i++) {
             *ptr++ = '\t';
             *ptr++ = '-';
-            *ptr++ = opts[i]->name;
-            if(opts[i]->description) {
+            *ptr++ = gopts->oargs[i]->name;
+            if(gopts->oargs[i]->description) {
                 *ptr++ = ' ';
-                size_t _desc_len = strlen(opts[i]->description);
-                memcpy(ptr, opts[i]->description, _desc_len);
+                size_t _desc_len = strlen(gopts->oargs[i]->description);
+                memcpy(ptr, gopts->oargs[i]->description, _desc_len);
                 ptr += _desc_len;
             }
             *ptr++ = '\n';
         }
-
-        free(opts);
-        opts = NULL;
     }
 
-    if(flags_len > 0) {
-        err = _cmd_options(cmd, CMDER_OPT_FLAG, &opts, NULL);
-        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
-
+    if(gopts->flags_len > 0) {
         memcpy(ptr, "Options:\n", 9);
         ptr += 9;
 
-        for(uint16_t i = 0; i < oargs_len; i++) {
+        for(uint16_t i = 0; i < gopts->flags_len; i++) {
             *ptr++ = '\t';
             *ptr++ = '-';
-            *ptr++ = opts[i]->name;
-            if(opts[i]->description) {
+            *ptr++ = gopts->flags[i]->name;
+            if(gopts->flags[i]->description) {
                 *ptr++ = ' ';
-                size_t _desc_len = strlen(opts[i]->description);
-                memcpy(ptr, opts[i]->description, _desc_len);
+                size_t _desc_len = strlen(gopts->flags[i]->description);
+                memcpy(ptr, gopts->flags[i]->description, _desc_len);
                 ptr += _desc_len;
             }
             *ptr++ = '\n';
         }
-
-        free(opts);
-        opts = NULL;
     }
 
     *--ptr = '\0'; // replace last [NL]
@@ -934,20 +775,38 @@ static cu_err_t _create_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t
     assert(ptr - manual == (long int) len);
 
     goto _return;
-_nomem:
-    err = CU_ERR_NO_MEM;
+_error:
     free(manual);
-    free(opts);
     manual = NULL;
-    opts = NULL;
+    len = 0;
 _return:
     *out_manual = manual;
-    if(out_len && manual) { *out_len = ptr - manual; }
     return err;
 }
 
 cu_err_t cmder_cmd_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t* out_len) {
-    return _create_manual(cmd, out_manual, out_len);
+    if(!cmd || !out_manual) {
+        return CU_ERR_INVALID_ARG;
+    }
+
+    cu_err_t err;
+    size_t len = 0, sig_len = 0;
+    cmder_gopts_t* gopts = NULL;
+    char* manual = NULL;
+
+    cu_err_check(_calc_manual_len(cmd, &len, &sig_len, &gopts));
+    cu_err_check(_create_manual(cmd, &manual, len, sig_len, gopts));
+    
+    goto _return;
+_error:
+    free(manual);
+    manual = NULL;
+    len = 0;
+_return:
+    _free_gopts(gopts);
+    if(out_len) { *out_len = len; }
+    *out_manual = manual;
+    return err;
 }
 
 cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t** out_optval) {
