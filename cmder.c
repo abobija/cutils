@@ -851,7 +851,7 @@ static void _cmdval_free(cmder_cmdval_t* cmdval) {
     cmdval->cmder = NULL;
     cmdval->context = NULL;
     cu_list_tfreex(cmdval->optvals, uint16_t, cmdval->optvals_len, _optval_free);
-    cmdval->extra_args = NULL; // don't free
+    cmdval->extra_args = NULL; // don't free()
     cmdval->extra_args_len = 0;
     free(cmdval);
 }
