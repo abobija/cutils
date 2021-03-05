@@ -515,7 +515,7 @@ static void error_cb(cmder_cmdval_t* cmdval) {
         }
         
         char* errstr = NULL;
-        size_t errstr_len = 0;
+        uint errstr_len = 0;
         assert(cmder_cmdval_errstr(cmdval, &errstr, &errstr_len) == CU_OK);
         assert(errstr);
         assert(errstr_len > 0);

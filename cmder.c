@@ -816,15 +816,15 @@ cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t**
     return CU_ERR_NOT_FOUND;
 }
 
-cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, size_t* out_len) {
+cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, uint* out_len) {
     if(!cmdval || !out_errstr || cmdval->error == CMDER_CMDVAL_NO_ERROR || !cmdval->cmd) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err = CU_OK;
     char* errorstr = NULL;
-    size_t cmdname_len = strlen(cmdval->cmd->name);
-    size_t len = cmdname_len;
+    uint cmdname_len = strlen(cmdval->cmd->name);
+    uint len = cmdname_len;
     len += 2; // ": "
 
     switch (cmdval->error)
@@ -876,7 +876,7 @@ cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, size_t* 
     *ptr = '\0';
 
     // make sure that ptr is at exact the same place where it should be
-    assert(ptr - errorstr == (long int) len);
+    assert(ptr - errorstr == len);
 
     goto _return;
 _error:
