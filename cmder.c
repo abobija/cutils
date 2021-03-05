@@ -59,27 +59,29 @@ cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
     if(!config || !out_handle)
         return CU_ERR_INVALID_ARG;
 
-    char* _name = strdup(config->name);
-
-    if(!_name) {
-        return CU_ERR_NO_MEM;
-    }
+    cu_err_t err = CU_OK;
+    cmder_handle_t cmder = NULL;
+    char* _name = NULL;
     
-    cmder_handle_t cmder = cu_tctor(cmder_handle_t, struct cmder_handle,
+    cu_mem_check(_name = strdup(config->name));
+
+    cu_mem_check(cmder = cu_tctor(cmder_handle_t, struct cmder_handle,
         .name = _name,
         .name_as_cmdline_prefix = config->name_as_cmdline_prefix,
         .context = config->context,
         .cmdline_max_len = config->cmdline_max_len > 0 ? config->cmdline_max_len : CMDER_DEFAULT_CMDLINE_MAX_LEN
-    );
+    ));
 
-    if(!cmder) {
-        free(_name);
-        return CU_ERR_NO_MEM;
-    }
+    _name = NULL;
 
+    goto _return;
+_error:
+    free(_name);
+    cmder_destroy(cmder);
+    cmder = NULL;
+_return:
     *out_handle = cmder;
-
-    return CU_OK;
+    return err;
 }
 
 cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoopts) {
@@ -98,11 +100,8 @@ cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoopts) {
         len += opt->is_arg ? 2 : 1;
     }
 
-    char* getoopts = malloc(len + 1);
-
-    if(!getoopts) {
-        return CU_ERR_NO_MEM;
-    }
+    char* getoopts = NULL;
+    cu_mem_checkr(getoopts = malloc(len + 1));
 
     getoopts[0] = ':';
     char* ptr = getoopts + 1;
@@ -268,44 +267,41 @@ cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_
     if(!cmder || !cmd)
         return CU_ERR_INVALID_ARG;
 
+    cu_err_t err = CU_OK;
+    cmder_cmd_handle_t _cmd = NULL;
+    char* _name = NULL;
+
     if(!cmd->callback) // no callback, no need to register cmd
         return CU_ERR_INVALID_ARG;
     
     if(cmder_get_cmd_by_name(cmder, cmd->name, NULL) == CU_OK) // already exist
         return CU_ERR_CMDER_CMD_EXIST;
     
-    char* _name = strdup(cmd->name);
+    cu_mem_check(_name = strdup(cmd->name));
 
-    if(!_name) {
-        return CU_ERR_NO_MEM;
-    }
-
-    cmder_cmd_handle_t _cmd = cu_tctor(cmder_cmd_handle_t, struct cmder_cmd_handle,
+    cu_mem_check(_cmd = cu_tctor(cmder_cmd_handle_t, struct cmder_cmd_handle,
         .cmder = cmder,
         .name = _name,
         .callback = cmd->callback
-    );
+    ));
 
-    if(!_cmd) {
-        free(_name);
-        return CU_ERR_NO_MEM;
-    }
+    _name = NULL;
 
-    cmder_cmd_handle_t* cmds = realloc(cmder->cmds, ++cmder->cmds_len * sizeof(cmder_cmd_handle_t));
-
-    if(!cmds) {
-        _cmd_free(_cmd);
-        return CU_ERR_NO_MEM;
-    }
+    cmder_cmd_handle_t* cmds = NULL;
+    cu_mem_check(cmds = realloc(cmder->cmds, ++cmder->cmds_len * sizeof(cmder_cmd_handle_t)));
 
     cmder->cmds = cmds;
     cmder->cmds[cmder->cmds_len - 1] = _cmd;
 
-    if(out_cmd) {
-        *out_cmd = _cmd;
-    }
+    goto _return;
+_error:
+    free(_name);
+    _cmd_free(_cmd);
+    _cmd = NULL;
+_return:
+    if(out_cmd) { *out_cmd = _cmd; }
 
-    return CU_OK;
+    return err;
 }
 
 cu_err_t cmder_add_vcmd(cmder_handle_t cmder, cmder_cmd_t* cmd) {
@@ -329,6 +325,10 @@ cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handl
     if(!cmd || !cmd->cmder || !opt)
         return CU_ERR_INVALID_ARG;
 
+    cu_err_t err = CU_OK;
+    cmder_opt_handle_t _opt = NULL;
+    char* _desc = NULL;
+
     if(!estr_is_alnum(opt->name)) {
         return CU_ERR_CMDER_INVALID_OPT_NAME;
     }
@@ -336,43 +336,36 @@ cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handl
     if(_get_opt_by_name(cmd, opt->name)) // already exist
         return CU_ERR_CMDER_OPT_EXIST;
     
-    char* _desc = NULL;
-
     if(opt->description) {
-        _desc = strdup(opt->description);
-
-        if(!_desc) {
-            return CU_ERR_NO_MEM;
-        }
+        cu_mem_check(_desc = strdup(opt->description));
     }
 
-    cmder_opt_handle_t _opt = cu_tctor(cmder_opt_handle_t, cmder_opt_t,
+    cu_mem_check(_opt = cu_tctor(cmder_opt_handle_t, cmder_opt_t,
         .name = opt->name,
         .is_arg = opt->is_arg,
         .is_optional = opt->is_optional,
         .description = _desc
-    );
+    ));
 
-    if(!_opt) {
-        free(_desc);
-        return CU_ERR_NO_MEM;
-    }
+    _desc = NULL;
 
-    cmder_opt_handle_t* opts = realloc(cmd->opts, ++cmd->opts_len * sizeof(cmder_opt_handle_t));
-    
-    if(!opts) {
-        _opt_free(_opt);
-        return CU_ERR_NO_MEM;
-    }
+    cmder_opt_handle_t* opts = NULL;
+    cu_mem_check(opts = realloc(cmd->opts, ++cmd->opts_len * sizeof(cmder_opt_handle_t)));
 
     cmd->opts = opts;
     cmd->opts[cmd->opts_len - 1] = _opt;
 
-    if(out_opt) {
-        *out_opt = _opt;
-    }
+    cu_err_check(_getoopts_recalc(cmd));
 
-    return _getoopts_recalc(cmd);
+    goto _return;
+_error:
+    free(_desc);
+    _opt_free(_opt);
+    _opt = NULL;
+_return:
+    if(out_opt) { *out_opt = _opt; }
+
+    return err;
 }
 
 cu_err_t cmder_add_vopt(cmder_cmd_handle_t cmd, cmder_opt_t* opt) {
@@ -828,6 +821,8 @@ cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, size_t* 
         return CU_ERR_INVALID_ARG;
     }
 
+    cu_err_t err = CU_OK;
+    char* errorstr = NULL;
     size_t cmdname_len = strlen(cmdval->cmd->name);
     size_t len = cmdname_len;
     len += 2; // ": "
@@ -849,13 +844,7 @@ cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, size_t* 
 
     len += 14; // " option -- 'x'"
 
-    char* errorstr = malloc(len + 1);
-
-    if(!errorstr) {
-        if(out_len) { *out_len = 0; }
-        *out_errstr = NULL;
-        return CU_ERR_NO_MEM;
-    }
+    cu_mem_check(errorstr = malloc(len + 1));
 
     char* ptr = errorstr;
     memcpy(ptr, cmdval->cmd->name, cmdname_len);
@@ -889,10 +878,16 @@ cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, size_t* 
     // make sure that ptr is at exact the same place where it should be
     assert(ptr - errorstr == (long int) len);
 
+    goto _return;
+_error:
+    free(errorstr);
+    errorstr = NULL;
+    len = 0;
+_return:
     *out_errstr = errorstr;
-    if(out_len && errorstr) { *out_len = ptr - errorstr; }
+    if(out_len) { *out_len = len; }
 
-    return CU_OK;
+    return err;
 }
 
 static void _optval_free(cmder_optval_t* optval) {
