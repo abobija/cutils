@@ -77,8 +77,11 @@ typedef int cu_err_t;
 #define cu_list_freex(list, len, free_fnc) \
     cu_list_tfreex(list, int, len, free_fnc)
 
+#define cu_err_checkl(EXP, label) \
+    if((err = (EXP)) != CU_OK) { goto label; }
+
 #define cu_err_check(EXP) \
-    if((err = (EXP)) != CU_OK) { goto _error; }
+    cu_err_checkl(EXP, _error)
 
 #define cu_err_checkr(EXP) \
     if((err = (EXP)) != CU_OK) { return err; }

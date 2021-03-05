@@ -255,7 +255,7 @@ static void test_man() {
     assert(cmder_cmd_manual(cmd, &manual, &manual_len) == CU_OK);
     assert(manual);
     assert(manual_len == strlen(manual));
-    printf("%s\n", manual);
+    //printf("%s\n", manual);
     free(manual);
 }
 

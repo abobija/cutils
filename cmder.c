@@ -139,22 +139,17 @@ cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoopts) {
 
 #define cmder_argv_iteration_handler() { \
     end = *prev == '"' && !quote_escaped ? prev : curr; \
-    argv[i] = strndup(start, end - start); \
-    if(!argv[i]) { goto _nomem; } \
+    cu_mem_check(argv[i] = strndup(start, end - start)); \
     if(strstr(argv[i], "\\\"")) { \
-        char* tmp = estr_rep(argv[i], "\\\"", "\""); \
-        if(tmp) { \
-            free(argv[i]); \
-            argv[i] = tmp; \
-        } else { \
-            goto _nomem; \
-        } \
+        cu_mem_check(_tmp = estr_rep(argv[i], "\\\"", "\"")); \
+        free(argv[i]); \
+        argv[i] = _tmp; \
     } \
     i++; \
 }
 
-cu_err_t cmder_args(const char* cmdline, int* argc, char*** out_argv) {
-    if(!cmdline || !argc || !out_argv) {
+cu_err_t cmder_args(const char* cmdline, int* out_argc, char*** out_argv) {
+    if(!cmdline || !out_argc || !out_argv) {
         return CU_ERR_INVALID_ARG;
     }
 
@@ -191,12 +186,9 @@ cu_err_t cmder_args(const char* cmdline, int* argc, char*** out_argv) {
     int i = 0;
 
     cu_err_t err = CU_OK;
-    argv = calloc(len, len * sizeof(char*));
+    cu_mem_check(argv = malloc(len * sizeof(char*)));
 
-    if(!argv) {
-        goto _nomem;
-    }
-
+    char* _tmp = NULL;
     while(*curr) cmder_argv_iteration({
         cmder_argv_iteration_handler();
     });
@@ -206,12 +198,10 @@ cu_err_t cmder_args(const char* cmdline, int* argc, char*** out_argv) {
     });
     
     goto _return;
-_nomem:
-    err = CU_ERR_NO_MEM;
-    len = 0;
-    cu_list_free(argv, len);
+_error:
+    cu_list_free(argv, len); // this will, as well, set argv to NULL and len to zero
 _return:
-    *argc = len;
+    *out_argc = len;
     *out_argv = argv;
     return err;
 }
@@ -984,35 +974,25 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
         return CU_ERR_CMDER_CMD_NOEXIST;
     }
     
-    cmder_cmdval_t* cmdval = cu_ctor(cmder_cmdval_t,
+    cmder_cmdval_t* cmdval = NULL;
+
+    cu_mem_check(cmdval = cu_ctor(cmder_cmdval_t,
         .cmder = cmder,
         .cmd = cmd,
         .context = cmder->context,
         .run_context = run_context,
         .error = CMDER_CMDVAL_NO_ERROR
-    );
-
-    if(!cmdval) {
-        goto _nomem;
-    }
+    ));
 
     if(cmd->opts_len > 0) {
         // make one optval in cmdval for every opt in cmd
         cmdval->optvals_len = cmd->opts_len;
-        cmdval->optvals = calloc(cmdval->optvals_len, sizeof(cmder_optval_t*));
+        cu_mem_check(cmdval->optvals = malloc(cmdval->optvals_len * sizeof(cmder_optval_t*)));
 
-        if(!cmdval->optvals) {
-            goto _nomem;
-        }
-
-        for(uint16_t i = 0; i < cmd->opts_len; i++) {
-            cmdval->optvals[i] = cu_ctor(cmder_optval_t,
+        for(uint16_t i = 0; i < cmdval->optvals_len; i++) {
+            cu_mem_check(cmdval->optvals[i] = cu_ctor(cmder_optval_t,
                 .opt = cmd->opts[i]
-            );
-
-            if(!cmdval->optvals[i]) {
-                goto _nomem;
-            }
+            ));
         }
     }
 
@@ -1023,10 +1003,9 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
     int o;
     while((o = getopt(argc, argv, (!cmd->getoopts ? "" : cmd->getoopts))) != -1) {
         if(o == ':') {
-            if(cmder_get_optval(cmdval, optopt, &optval) != CU_OK) {
-                err = CU_FAIL;
-                goto _return;
-            } else if(!optval->opt->is_optional) {
+            cu_err_checkl(cmder_get_optval(cmdval, optopt, &optval), _return);
+            
+            if(!optval->opt->is_optional) {
                 err = CU_ERR_CMDER_OPT_VAL_MISSING;
                 cmdval->error = CMDER_CMDVAL_OPTION_VALUE_MISSING;
                 cmdval->error_option_name = optopt;
@@ -1038,10 +1017,7 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
             cmdval->error_option_name = optopt;
             goto _error;
         } else {
-            if(cmder_get_optval(cmdval, o, &optval) != CU_OK) {
-                err = CU_FAIL;
-                goto _return;
-            }
+            cu_err_checkl(cmder_get_optval(cmdval, o, &optval), _return);
 
             if(optval->opt->is_arg) {
                 optval->val = optarg;
@@ -1064,11 +1040,7 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
     for(int i = optind; i < argc; i++, cmdval->extra_args_len++);
 
     if(cmdval->extra_args_len > 0) {
-        cmdval->extra_args = calloc(cmdval->extra_args_len, sizeof(char*));
-
-        if(!cmdval->extra_args) {
-            goto _nomem;
-        }
+        cu_mem_check(cmdval->extra_args = malloc(cmdval->extra_args_len * sizeof(char*)));
 
         for(int i = optind, j = 0; i < argc; i++, j++) {
             cmdval->extra_args[j] = argv[i];
@@ -1082,9 +1054,6 @@ _error:
     cmdval->extra_args = NULL; // don't free
     cmdval->extra_args_len = 0;
     cmd->callback(cmdval);
-    goto _return;
-_nomem:
-    err = CU_ERR_NO_MEM;
 _return:
     _cmdval_free(cmdval);
     return err;

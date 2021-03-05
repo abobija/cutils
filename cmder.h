@@ -79,7 +79,7 @@ typedef struct {
 
 cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle);
 cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoops);
-cu_err_t cmder_args(const char* cmdline, int* argc, char*** out_argv);
+cu_err_t cmder_args(const char* cmdline, int* out_argc, char*** out_argv);
 cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_t* out_cmd);
 cu_err_t cmder_add_vcmd(cmder_handle_t cmder, cmder_cmd_t* cmd);
 cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handle_t* out_opt);
