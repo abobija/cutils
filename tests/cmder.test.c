@@ -77,8 +77,10 @@ static void test_error_callback();
 static void test_run_raw_args();
 static void test_signatures();
 static void test_with_no_prefix();
+static void test_man();
 
 int main() {
+    test_man();
     test_with_no_prefix();
     test_signatures();
     test_run_raw_args();
@@ -228,6 +230,35 @@ int main() {
     return 0;
 }
 
+static void test_man() {
+    cmder_handle_t cmder = NULL;
+    assert(cmder_create(&(cmder_t){ .name = "esp" }, &cmder) == CU_OK && cmder);
+    cmder_cmd_handle_t cmd = NULL;
+    assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "touch", .callback = &null_cb }, &cmd) == CU_OK);
+    assert(cmd);
+
+    assert(cmder_add_vopt(cmd, &(cmder_opt_t){
+        .name = 'f',
+        .is_arg = true,
+        .description = "Path"
+    }) == CU_OK);
+
+    assert(cmder_add_vopt(cmd, &(cmder_opt_t){ 
+        .name = 'x',
+        .is_arg = true,
+        .is_optional = true,
+        .description = "File mods"
+    }) == CU_OK);
+
+    char* manual = NULL;
+    size_t manual_len = 0;
+    assert(cmder_cmd_manual(cmd, &manual, &manual_len) == CU_OK);
+    assert(manual);
+    assert(manual_len == strlen(manual));
+    //printf("%s\n", manual);
+    free(manual);
+}
+
 static void test_with_no_prefix() {
     cmder_handle_t cmder = NULL;
     assert(cmder_create(&(cmder_t){ .name = "esp" }, &cmder) == CU_OK && cmder);
@@ -288,13 +319,6 @@ static void test_signatures() {
     assert(sig && sig_len == strlen("touch [OPTION] ... [-b bval] [-c cval] -d dval -e eval") 
         && estr_eq(sig, "touch [OPTION] ... [-b bval] [-c cval] -d dval -e eval"));
     free(sig);
-
-    char* manual = NULL;
-    size_t manual_len = 0;
-    assert(cmder_cmd_manual(cmd, &manual, &manual_len) == CU_OK);
-    assert(manual);
-    //printf("%ld:\n%s\n", manual_len, manual);
-    free(manual);
 }
 
 static void test_run_raw_args() {

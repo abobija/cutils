@@ -40,6 +40,7 @@ typedef struct {
     char name;
     bool is_arg;
     bool is_optional;
+    char* description;
 } cmder_opt_t;
 
 typedef cmder_opt_t* cmder_opt_handle_t;

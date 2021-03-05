@@ -229,6 +229,7 @@ static void _opt_free(cmder_opt_handle_t opt) {
     if(!opt)
         return;
 
+    free(opt->description);
     free(opt);
 }
 
@@ -318,13 +319,25 @@ cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handl
     if(_get_opt_by_name(cmd, opt->name)) // already exist
         return CU_ERR_CMDER_OPT_EXIST;
     
+    char* _desc = NULL;
+
+    if(opt->description) {
+        _desc = strdup(opt->description);
+
+        if(!_desc) {
+            return CU_ERR_NO_MEM;
+        }
+    }
+
     cmder_opt_handle_t _opt = cu_tctor(cmder_opt_handle_t, cmder_opt_t,
         .name = opt->name,
         .is_arg = opt->is_arg,
-        .is_optional = opt->is_optional
+        .is_optional = opt->is_optional,
+        .description = _desc
     );
 
     if(!_opt) {
+        free(_desc);
         return CU_ERR_NO_MEM;
     }
 
@@ -605,46 +618,86 @@ static cu_err_t _calc_manual_len(cmder_cmd_handle_t cmd, size_t* out_len, size_t
     }
 
     cu_err_t err = CU_OK;
+    cmder_opt_handle_t* opts = NULL;
     uint16_t flags_len = 0, oargs_len = 0, margs_len = 0;
     size_t len = 0, sig_len = 0, name_len = 0;
     err = _calc_signature_len(cmd, &sig_len, &name_len, &flags_len, &oargs_len, &margs_len);
     if(err != CU_OK) { return err; }
 
+    len += 7; // "Usage: "
     len += sig_len;
     len ++; // "\n"
 
     if(margs_len > 0) {
+        err = _cmd_options(cmd, CMDER_OPT_MANDATORY_ARG, &opts, NULL);
+        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
+
         len += 16; // "Mandatory args:[NL]"
         for(uint16_t i = 0; i < margs_len; i++) {
-            len += 4; // "[TAB]-x[NL]"
+            len += 3; // "[TAB]-x"
+            if(opts[i]->description) {
+                len++; // [SPACE]
+                len += strlen(opts[i]->description);
+            }
+            len++; // "[NL]"
         }
+
+        free(opts);
+        opts = NULL;
     }
 
     if(oargs_len > 0) {
+        err = _cmd_options(cmd, CMDER_OPT_OPTIONAL_ARG, &opts, NULL);
+        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
+
         len += 15; // "Optional args:[NL]"
         for(uint16_t i = 0; i < oargs_len; i++) {
-            len += 4; // "[TAB]-x[NL]"
+            len += 3; // "[TAB]-x"
+            if(opts[i]->description) {
+                len++; // [SPACE]
+                len += strlen(opts[i]->description);
+            }
+            len++; // "[NL]"
         }
+
+        free(opts);
+        opts = NULL;
     }
 
     if(flags_len > 0) {
+        err = _cmd_options(cmd, CMDER_OPT_FLAG, &opts, NULL);
+        if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
+
         len += 9; // "Options:[NL]"
         for(uint16_t i = 0; i < oargs_len; i++) {
-            len += 4; // "[TAB]-x[NL]"
+            len += 3; // "[TAB]-x"
+            if(opts[i]->description) {
+                len++; // [SPACE]
+                len += strlen(opts[i]->description);
+            }
+            len++; // "[NL]"
         }
+
+        free(opts);
+        opts = NULL;
     }
 
     if(len > 0) {
         len--; // remove last [NL]
     }
 
+    goto _return;
+_nomem:
+    err = CU_ERR_NO_MEM;
+    free(opts);
+    opts = NULL;
+_return:
     if(out_len)       { *out_len = len; }
     if(out_name_len)  { *out_name_len = name_len; }
     if(out_sig_len)   { *out_sig_len = sig_len; }
     if(out_flags_len) { *out_flags_len = flags_len; }
     if(out_oargs_len) { *out_oargs_len = oargs_len; }
     if(out_margs_len) { *out_margs_len = margs_len; }
-
     return err;
 }
 
@@ -665,6 +718,8 @@ static cu_err_t _create_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t
     ptr = manual = malloc(len + 1); // +1 for "\0"
     if(!manual) { goto _nomem; }
 
+    memcpy(ptr, "Usage: ", 7);
+    ptr += 7;
     err = _create_signature(cmd, &ptr, NULL, sig_len, name_len, flags_len, oargs_len, margs_len);
     if(err != CU_OK) { if(err == CU_ERR_NO_MEM) { goto _nomem; } else { goto _return; } }
 
@@ -682,6 +737,12 @@ static cu_err_t _create_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t
             *ptr++ = '\t';
             *ptr++ = '-';
             *ptr++ = opts[i]->name;
+            if(opts[i]->description) {
+                *ptr++ = ' ';
+                size_t _desc_len = strlen(opts[i]->description);
+                memcpy(ptr, opts[i]->description, _desc_len);
+                ptr += _desc_len;
+            }
             *ptr++ = '\n';
         }
 
@@ -700,6 +761,12 @@ static cu_err_t _create_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t
             *ptr++ = '\t';
             *ptr++ = '-';
             *ptr++ = opts[i]->name;
+            if(opts[i]->description) {
+                *ptr++ = ' ';
+                size_t _desc_len = strlen(opts[i]->description);
+                memcpy(ptr, opts[i]->description, _desc_len);
+                ptr += _desc_len;
+            }
             *ptr++ = '\n';
         }
 
@@ -718,6 +785,12 @@ static cu_err_t _create_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t
             *ptr++ = '\t';
             *ptr++ = '-';
             *ptr++ = opts[i]->name;
+            if(opts[i]->description) {
+                *ptr++ = ' ';
+                size_t _desc_len = strlen(opts[i]->description);
+                memcpy(ptr, opts[i]->description, _desc_len);
+                ptr += _desc_len;
+            }
             *ptr++ = '\n';
         }
 
