@@ -1,4 +1,4 @@
-CCFLAGS     = -Iinclude
+CCFLAGS     = -Iinclude -MD -MP
 CCWARNINGS  = -Wall -Wextra# -Wpedantic
 SRCDIR      = src
 TESTSDIR    = tests
@@ -19,13 +19,15 @@ CMDER_OBJS  = $(ESTR_OBJS) $(XLIST_OBJS) $(SRCOBJ)/cmder.o
 all: cutils estr cmder
 	@:
 
-$(SRCOBJ) $(TESTOBJ) $(TESTBIN):
-	mkdir -p $@
+.PRECIOUS: %/.sentinel
+%/.sentinel:
+	mkdir -p ${@D}
+	touch $@
 
-$(SRCOBJ)/%.o: $(SRCDIR)/%.c $(SRCOBJ) Makefile
+$(SRCOBJ)/%.o: $(SRCDIR)/%.c $(SRCOBJ)/.sentinel Makefile
 	$(CC) -c -o $@ $<
 
-$(TESTOBJ)/%.o: $(TESTSDIR)/%.c $(TESTOBJ) $(TESTBIN) Makefile
+$(TESTOBJ)/%.o: $(TESTSDIR)/%.c $(TESTOBJ)/.sentinel $(TESTBIN)/.sentinel Makefile
 	$(CC) -c -o $@ $<
 
 cutils:
@@ -62,3 +64,7 @@ cmder.test: $(CMDER_OBJS) $(TESTOBJ)/cmder.test.o
 clean:
 	rm -rf ./$(OUTDIR)
 	@echo "Project cleaned"
+
+#-include $(ESTR_OBJS:.o=.d)
+#-include $(XLIST_OBJS:.o=.d)
+#-include $(CMDER_OBJS:.o=.d)
