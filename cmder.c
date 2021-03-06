@@ -9,8 +9,7 @@ struct cmder_cmd_handle {
 	char* name;
     cmder_callback_t callback;
     cmder_handle_t cmder;
-    cmder_opt_handle_t* opts;
-    uint16_t opts_len;
+    xlist_t opts;
     char* getoopts;
 };
 
@@ -55,7 +54,8 @@ static void _cmd_free(cmder_cmd_handle_t cmd) {
     cmd->name = NULL;
     free(cmd->getoopts);
     cmd->getoopts = NULL;
-    cu_list_tfreex(cmd->opts, uint16_t, cmd->opts_len, _opt_free);
+    xlist_destroy(cmd->opts);
+    cmd->opts = NULL;
     free(cmd);
 }
 
@@ -112,6 +112,10 @@ static void _xlist_cmd_free(void* data) {
     _cmd_free((cmder_cmd_handle_t) data);
 }
 
+static void _xlist_opt_free(void* data) {
+    _opt_free((cmder_opt_handle_t) data);
+}
+
 cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
     if(!config || !out_handle)
         return CU_ERR_INVALID_ARG;
@@ -156,16 +160,15 @@ cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoopts) {
         return CU_ERR_INVALID_ARG;
     }
 
-    if(cmd->opts_len <= 0) {
-        return CU_ERR_CMDER_NO_CMDS;
+    if(xlist_is_empty(cmd->opts)) {
+        return CU_ERR_CMDER_NO_OPTS;
     }
 
     uint16_t len = 1;
 
-    for(uint16_t i = 0; i < cmd->opts_len; i++) {
-        cmder_opt_handle_t opt = cmd->opts[i];
-        len += opt->is_arg ? 2 : 1;
-    }
+    xlist_each(cmder_opt_handle_t, cmd->opts, {
+        len += xdata->is_arg ? 2 : 1;
+    });
 
     char* getoopts = NULL;
     cu_mem_checkr(getoopts = malloc(len + 1));
@@ -173,11 +176,10 @@ cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoopts) {
     getoopts[0] = ':';
     char* ptr = getoopts + 1;
 
-    for(uint16_t i = 0; i < cmd->opts_len; i++) {
-        cmder_opt_handle_t opt = cmd->opts[i];
-        *ptr++ = opt->name;
-        if(opt->is_arg) *ptr++ = ':';
-    }
+    xlist_each(cmder_opt_handle_t, cmd->opts, {
+        *ptr++ = xdata->name;
+        if(xdata->is_arg) *ptr++ = ':';
+    });
 
     getoopts[len] = '\0';
     *out_getoopts = getoopts;
@@ -291,12 +293,10 @@ cu_err_t cmder_get_cmd_by_name(cmder_handle_t cmder, const char* cmd_name, cmder
         return CU_ERR_EMPTY_STRING;
     }
 
-    xlist_each(cmder->cmds, {
-        cmder_cmd_handle_t cmd = (cmder_cmd_handle_t) xnode->data;
-        
-        if(estr_eq(cmd_name, cmd->name)) {
+    xlist_each(cmder_cmd_handle_t, cmder->cmds, {
+        if(estr_eq(cmd_name, xdata->name)) {
             if(out_cmd_handle) {
-                *out_cmd_handle = cmd;
+                *out_cmd_handle = xdata;
             }
             
             return CU_OK;
@@ -331,6 +331,7 @@ cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_
 
     _name = NULL;
 
+    cu_err_check(xlist_create(&(xlist_config_t){ .data_free_fnc = &_xlist_opt_free }, &_cmd->opts));
     cu_err_check(xlist_vadd(cmder->cmds, _cmd));
 
     goto _return;
@@ -349,14 +350,15 @@ cu_err_t cmder_add_vcmd(cmder_handle_t cmder, cmder_cmd_t* cmd) {
 }
 
 static cmder_opt_handle_t _get_opt_by_name(cmder_cmd_handle_t cmd, char name) {
-    if(!cmd)
+    if(!cmd) {
         return NULL;
-    
-    for(uint16_t i = 0; i < cmd->opts_len; i++) {
-        if(cmd->opts[i]->name == name) {
-            return cmd->opts[i];
-        }
     }
+
+    xlist_each(cmder_opt_handle_t, cmd->opts, {
+        if(xdata->name == name) {
+            return xdata;
+        }
+    });
 
     return NULL;
 }
@@ -389,12 +391,7 @@ cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handl
 
     _desc = NULL;
 
-    cmder_opt_handle_t* opts = NULL;
-    cu_mem_check(opts = realloc(cmd->opts, ++cmd->opts_len * sizeof(cmder_opt_handle_t)));
-
-    cmd->opts = opts;
-    cmd->opts[cmd->opts_len - 1] = _opt;
-
+    cu_err_check(xlist_vadd(cmd->opts, _opt));
     cu_err_check(_getoopts_recalc(cmd));
 
     goto _return;
@@ -433,17 +430,17 @@ static cu_err_t _cmd_options(cmder_cmd_handle_t cmd, cmder_opt_type_t type, cmde
 
     uint16_t len = 0;
 
-    for(uint16_t i = 0; i < cmd->opts_len; i++) {
-        if(cmd->opts[i]->is_arg) {
-            if(cmd->opts[i]->is_optional && type == CMDER_OPT_OPTIONAL_ARG) {
+    xlist_each(cmder_opt_handle_t, cmd->opts, {
+        if(xdata->is_arg) {
+            if(xdata->is_optional && type == CMDER_OPT_OPTIONAL_ARG) {
                 len++;
-            } else if(!cmd->opts[i]->is_optional && type == CMDER_OPT_MANDATORY_ARG) {
+            } else if(!xdata->is_optional && type == CMDER_OPT_MANDATORY_ARG) {
                 len++;
             }
         } else if(type == CMDER_OPT_FLAG) {
             len++;
         }
-    }
+    });
 
     if(len == 0 || !out_opts) {
         if(out_opts) { *out_opts = NULL; }
@@ -455,17 +452,18 @@ static cu_err_t _cmd_options(cmder_cmd_handle_t cmd, cmder_opt_type_t type, cmde
     cmder_opt_handle_t* opts = NULL;
     cu_mem_checkr(opts = malloc(len * sizeof(cmder_opt_handle_t)));
 
-    for(uint16_t i = 0, j = 0; i < cmd->opts_len; i++) {
-        if(cmd->opts[i]->is_arg) {
-            if(cmd->opts[i]->is_optional && type == CMDER_OPT_OPTIONAL_ARG) {
-                opts[j++] = cmd->opts[i];
-            } else if(!cmd->opts[i]->is_optional && type == CMDER_OPT_MANDATORY_ARG) {
-                opts[j++] = cmd->opts[i];
+    uint16_t j = 0;
+    xlist_each(cmder_opt_handle_t, cmd->opts, {
+        if(xdata->is_arg) {
+            if(xdata->is_optional && type == CMDER_OPT_OPTIONAL_ARG) {
+                opts[j++] = xdata;
+            } else if(!xdata->is_optional && type == CMDER_OPT_MANDATORY_ARG) {
+                opts[j++] = xdata;
             }
         } else if(type == CMDER_OPT_FLAG) {
-            opts[j++] = cmd->opts[i];
+            opts[j++] = xdata;
         }
-    }
+    });
 
     *out_opts = opts;
 
@@ -997,16 +995,17 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
         .error = CMDER_CMDVAL_NO_ERROR
     ));
 
-    if(cmd->opts_len > 0) {
+    if(! xlist_is_empty(cmd->opts)) {
         // make one optval in cmdval for every opt in cmd
-        cmdval->optvals_len = cmd->opts_len;
+        cmdval->optvals_len = xlist_size(cmd->opts);
         cu_mem_check(cmdval->optvals = malloc(cmdval->optvals_len * sizeof(cmder_optval_t*)));
 
-        for(uint16_t i = 0; i < cmdval->optvals_len; i++) {
-            cu_mem_check(cmdval->optvals[i] = cu_ctor(cmder_optval_t,
-                .opt = cmd->opts[i]
+        uint16_t i = 0;
+        xlist_each(cmder_opt_handle_t, cmd->opts, {
+            cu_mem_check(cmdval->optvals[i++] = cu_ctor(cmder_optval_t,
+                .opt = xdata
             ));
-        }
+        });
     }
 
     opterr = 0;
@@ -1130,6 +1129,7 @@ cu_err_t cmder_destroy(cmder_handle_t cmder) {
     }
 
     xlist_destroy(cmder->cmds);
+    cmder->cmds = NULL;
     free(cmder->name);
     cmder->name = NULL;
     cmder->context = NULL;

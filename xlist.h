@@ -28,8 +28,10 @@ typedef struct {
     xnode_free_fnc_t data_free_fnc;
 } xlist_config_t;
 
-#define xlist_each(list, CODE) \
-    __extension__ ({ if(list) { xnode_t xnode = list->head; while(xnode) { {CODE}; xnode = xnode->next; } } list; })
+#define xlist_each(data_type, list, CODE) \
+    __extension__ ({ if(list) { xnode_t xnode = list->head; while(xnode) { \
+        data_type xdata = (data_type) xnode->data; {CODE}; xnode = xnode->next; \
+    } } list; })
 
 #define xlist_vadd_to_back(list, data) xlist_add_to_back(list, data, NULL)
 #define xlist_vadd_to_front(list, data) xlist_add_to_front(list, data, NULL)

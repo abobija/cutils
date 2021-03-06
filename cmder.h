@@ -25,6 +25,7 @@ extern "C" {
 #define CU_ERR_CMDER_CMD_EXIST           (CU_ERR_CMDER_BASE + 10)
 #define CU_ERR_CMDER_NO_OPTVALS          (CU_ERR_CMDER_BASE + 11)
 #define CU_ERR_CMDER_INVALID_OPT_NAME    (CU_ERR_CMDER_BASE + 12)
+#define CU_ERR_CMDER_NO_OPTS             (CU_ERR_CMDER_BASE + 13)
 
 struct cmder_handle;
 struct cmder_cmd_handle;

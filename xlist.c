@@ -158,7 +158,7 @@ cu_err_t xlist_remove_data(xlist_t list, void* data) {
 }
 
 bool xlist_is_empty(xlist_t list) {
-    return ! list ? true : ! list->head;
+    return ! list ? true : list->len == 0;
 }
 
 cu_err_t xlist_flush(xlist_t list) {
