@@ -3,6 +3,7 @@ CCWARNINGS = -Wall -Wextra# -Wpedantic
 CC = gcc $(CCFLAGS) $(CCWARNINGS)
 
 ESTR_OBJS = estr.o
+XLIST_OBJS = xlist.o
 CMDER_OBJS = $(ESTR_OBJS) cmder.o
 
 .PHONY: all test clean
@@ -19,10 +20,13 @@ cutils:
 estr: $(ESTR_OBJS)
 	@:
 
+xlist: $(XLIST_OBJS)
+	@:
+
 cmder: $(CMDER_OBJS)
 	@:
 
-test: cutils.test estr.test cmder.test
+test: cutils.test estr.test xlist.test cmder.test
 	@echo "All test passed"
 
 cutils.test: $(ESTR_OBJS) tests/cutils.test.o
@@ -32,6 +36,10 @@ cutils.test: $(ESTR_OBJS) tests/cutils.test.o
 estr.test: $(ESTR_OBJS) tests/estr.test.o
 	$(CC) -o tests/$@ $^
 	tests/estr.test && echo "estr tests passed"
+
+xlist.test: $(XLIST_OBJS) tests/xlist.test.o
+	$(CC) -o tests/$@ $^
+	tests/xlist.test && echo "xlist tests passed"
 
 cmder.test: $(CMDER_OBJS) tests/cmder.test.o
 	$(CC) -o tests/$@ $^

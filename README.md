@@ -16,9 +16,11 @@ make [TARGET] [TARGET...]
 | `all`  | Build all |
 | `test` | Run all tests |
 | `clean` | Clean project |
-| `estr`  | Build estr |
 | `cutils.test` | Run cutils tests |
+| `estr`  | Build estr |
 | `estr.test` | Run estr tests |
+| `xlist`  | Build xlist |
+| `xlist.test` | Run xlist tests |
 | `cmder` | Build cmder |
 | `cmder.test` | Run cmder tests |
 
