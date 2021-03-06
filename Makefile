@@ -10,9 +10,9 @@ TESTOBJ     = $(OBJDIR)/$(TESTSDIR)
 TESTBIN     = $(BINDIR)/$(TESTSDIR)
 CC          = gcc $(CCFLAGS) $(CCWARNINGS)
 
-ESTR_OBJS   = $(SRCDIR)/estr.o
-XLIST_OBJS  = $(SRCDIR)/xlist.o
-CMDER_OBJS  = $(ESTR_OBJS) $(XLIST_OBJS) $(SRCDIR)/cmder.o
+ESTR_OBJS   = $(SRCOBJ)/estr.o
+XLIST_OBJS  = $(SRCOBJ)/xlist.o
+CMDER_OBJS  = $(ESTR_OBJS) $(XLIST_OBJS) $(SRCOBJ)/cmder.o
 
 .PHONY: all test clean
 
@@ -22,11 +22,11 @@ all: cutils estr cmder
 $(SRCOBJ) $(TESTOBJ) $(TESTBIN):
 	mkdir -p $@
 
-$(SRCDIR)/%.o: $(SRCDIR)/%.c Makefile $(SRCOBJ)
-	$(CC) -c -o $(OBJDIR)/$@ $<
+$(SRCOBJ)/%.o: $(SRCDIR)/%.c $(SRCOBJ) Makefile
+	$(CC) -c -o $@ $<
 
-$(TESTSDIR)/%.o: $(TESTSDIR)/%.c Makefile $(TESTOBJ) $(TESTBIN)
-	$(CC) -c -o $(OBJDIR)/$@ $<
+$(TESTOBJ)/%.o: $(TESTSDIR)/%.c $(TESTOBJ) $(TESTBIN) Makefile
+	$(CC) -c -o $@ $<
 
 cutils:
 	@:
@@ -43,20 +43,20 @@ cmder: $(CMDER_OBJS)
 test: cutils.test estr.test xlist.test cmder.test
 	@echo "All test passed"
 
-cutils.test: $(ESTR_OBJS) $(TESTSDIR)/cutils.test.o
-	$(CC) -o $(TESTBIN)/$@ $(addprefix $(OBJDIR)/, $^)
+cutils.test: $(ESTR_OBJS) $(TESTOBJ)/cutils.test.o
+	$(CC) -o $(TESTBIN)/$@ $^
 	$(TESTBIN)/cutils.test && echo "cuilts tests passed"
 
-estr.test: $(ESTR_OBJS) $(TESTSDIR)/estr.test.o
-	$(CC) -o $(TESTBIN)/$@ $(addprefix $(OBJDIR)/, $^)
+estr.test: $(ESTR_OBJS) $(TESTOBJ)/estr.test.o
+	$(CC) -o $(TESTBIN)/$@ $^
 	$(TESTBIN)/estr.test && echo "estr tests passed"
 
-xlist.test: $(XLIST_OBJS) $(TESTSDIR)/xlist.test.o
-	$(CC) -o $(TESTBIN)/$@ $(addprefix $(OBJDIR)/, $^)
+xlist.test: $(XLIST_OBJS) $(TESTOBJ)/xlist.test.o
+	$(CC) -o $(TESTBIN)/$@ $^
 	$(TESTBIN)/xlist.test && echo "xlist tests passed"
 
-cmder.test: $(CMDER_OBJS) $(TESTSDIR)/cmder.test.o
-	$(CC) -o $(TESTBIN)/$@ $(addprefix $(OBJDIR)/, $^)
+cmder.test: $(CMDER_OBJS) $(TESTOBJ)/cmder.test.o
+	$(CC) -o $(TESTBIN)/$@ $^
 	$(TESTBIN)/cmder.test && echo "cmder tests passed"
 
 clean:
