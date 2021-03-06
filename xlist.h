@@ -7,31 +7,46 @@ extern "C" {
 
 #include "cutils.h"
 #include <stdlib.h>
+#include <stdbool.h>
 
 typedef struct xnode* xnode_t;
 typedef struct xlist* xlist_t;
 typedef void(*xnode_free_fnc_t)(void* data);
+
+struct xnode {
+    void* data;
+    xnode_t next;
+};
+
+struct xlist {
+    xnode_t head;
+    uint len;
+    xnode_free_fnc_t data_free_fnc;
+};
+
+typedef struct {
+    xnode_free_fnc_t data_free_fnc;
+} xlist_config_t;
+
+#define xlist_each(list, CODE) \
+    __extension__ ({ if(list) { xnode_t xnode = list->head; while(xnode) { {CODE}; xnode = xnode->next; } } list; })
 
 #define xlist_vadd_to_back(list, data) xlist_add_to_back(list, data, NULL)
 #define xlist_vadd_to_front(list, data) xlist_add_to_front(list, data, NULL)
 #define xlist_add(list, data, node) xlist_add_to_back(list, data, node)
 #define xlist_vadd(list, data)  xlist_add(list, data, NULL)
 
-#define xlist_vremove(list, node) xlist_remove(list, node, NULL)
-#define xlist_vremove_data(list, data) xlist_remove_data(list, data, NULL)
-#define xlist_vflush(list) xlist_flush(list, NULL)
-#define xlist_vdestroy(list) xlist_destroy(list, NULL)
-
-cu_err_t xlist_create(xlist_t* list);
+cu_err_t xlist_create(xlist_config_t* config, xlist_t* list);
 int xlist_size(xlist_t list);
 cu_err_t xlist_add_to_back(xlist_t list, void* data, xnode_t* node);
 cu_err_t xlist_add_to_front(xlist_t list, void* data, xnode_t* node);
 cu_err_t xlist_get(xlist_t list, int index, xnode_t* node);
 cu_err_t xlist_get_data(xlist_t list, int index, void** data);
-cu_err_t xlist_remove(xlist_t list, xnode_t node, xnode_free_fnc_t free_fnc);
-cu_err_t xlist_remove_data(xlist_t list, void* data, xnode_free_fnc_t free_fnc);
-cu_err_t xlist_flush(xlist_t list, xnode_free_fnc_t free_fnc);
-cu_err_t xlist_destroy(xlist_t list, xnode_free_fnc_t free_fnc);
+cu_err_t xlist_remove(xlist_t list, xnode_t node);
+cu_err_t xlist_remove_data(xlist_t list, void* data);
+bool xlist_is_empty(xlist_t list);
+cu_err_t xlist_flush(xlist_t list);
+cu_err_t xlist_destroy(xlist_t list);
 
 #ifdef __cplusplus
 }

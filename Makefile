@@ -4,7 +4,7 @@ CC = gcc $(CCFLAGS) $(CCWARNINGS)
 
 ESTR_OBJS = estr.o
 XLIST_OBJS = xlist.o
-CMDER_OBJS = $(ESTR_OBJS) cmder.o
+CMDER_OBJS = $(ESTR_OBJS) $(XLIST_OBJS) cmder.o
 
 .PHONY: all test clean
 

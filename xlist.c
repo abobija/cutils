@@ -1,22 +1,18 @@
 #include "xlist.h"
 
-struct xnode {
-    void* data;
-    xnode_t next;
-};
-
-struct xlist {
-    xnode_t head;
-    uint len;
-};
-
-cu_err_t xlist_create(xlist_t* list) {
+cu_err_t xlist_create(xlist_config_t* config, xlist_t* list) {
     if(!list) {
         return CU_ERR_INVALID_ARG;
     }
 
-    cu_mem_checkr(*list = cu_tctor(xlist_t, struct xlist));
+    xlist_t _list = NULL;
+    cu_mem_checkr(_list = cu_tctor(xlist_t, struct xlist));
 
+    if(config) {
+        _list->data_free_fnc = config->data_free_fnc;
+    }
+
+    *list = _list;
     return CU_OK;
 }
 
@@ -109,7 +105,7 @@ cu_err_t xlist_get_data(xlist_t list, int index, void** data) {
     return CU_ERR_NOT_FOUND;
 }
 
-cu_err_t xlist_remove(xlist_t list, xnode_t node, xnode_free_fnc_t free_fnc) {
+cu_err_t xlist_remove(xlist_t list, xnode_t node) {
     if(!list || !node) {
         return CU_ERR_INVALID_ARG;
     }
@@ -126,7 +122,7 @@ cu_err_t xlist_remove(xlist_t list, xnode_t node, xnode_free_fnc_t free_fnc) {
             if(prev) { prev->next = curr->next; }
             else { list->head = curr->next; }
             curr->next = NULL;
-            if(free_fnc) { free_fnc(curr->data); }
+            if(list->data_free_fnc) { list->data_free_fnc(curr->data); }
             free(curr);
             list->len--;
             return CU_OK;
@@ -139,7 +135,7 @@ cu_err_t xlist_remove(xlist_t list, xnode_t node, xnode_free_fnc_t free_fnc) {
     return CU_ERR_NOT_FOUND;
 }
 
-cu_err_t xlist_remove_data(xlist_t list, void* data, xnode_free_fnc_t free_fnc) {
+cu_err_t xlist_remove_data(xlist_t list, void* data) {
     if(!list) {
         return CU_ERR_INVALID_ARG;
     }
@@ -152,7 +148,7 @@ cu_err_t xlist_remove_data(xlist_t list, void* data, xnode_free_fnc_t free_fnc) 
         next = ptr->next;
 
         if(ptr->data == data) {
-            cu_err_checkr(xlist_remove(list, ptr, free_fnc));
+            cu_err_checkr(xlist_remove(list, ptr));
         }
 
         ptr = next;
@@ -161,7 +157,11 @@ cu_err_t xlist_remove_data(xlist_t list, void* data, xnode_free_fnc_t free_fnc) 
     return err;
 }
 
-cu_err_t xlist_flush(xlist_t list, xnode_free_fnc_t free_fnc) {
+bool xlist_is_empty(xlist_t list) {
+    return ! list ? true : ! list->head;
+}
+
+cu_err_t xlist_flush(xlist_t list) {
     if(!list) {
         return CU_ERR_INVALID_ARG;
     }
@@ -169,19 +169,19 @@ cu_err_t xlist_flush(xlist_t list, xnode_free_fnc_t free_fnc) {
     cu_err_t err = CU_OK;
 
     while(list->head) {
-        cu_err_checkr(xlist_remove(list, list->head, free_fnc));
+        cu_err_checkr(xlist_remove(list, list->head));
     }
 
     return err;
 }
 
-cu_err_t xlist_destroy(xlist_t list, xnode_free_fnc_t free_fnc) {
+cu_err_t xlist_destroy(xlist_t list) {
     if(!list) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err = CU_OK;
-    cu_err_checkr(xlist_flush(list, free_fnc));
+    cu_err_checkr(xlist_flush(list));
     free(list);
 
     return err;

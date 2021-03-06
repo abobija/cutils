@@ -26,32 +26,39 @@ static void free_data(void* data) {
 
 static void test_dynmem() {
     xlist_t list = NULL;
-    assert(xlist_create(&list) == CU_OK);
+    assert(xlist_create(&(xlist_config_t) {
+        .data_free_fnc = &free_data
+    }, &list) == CU_OK);
+    assert(xlist_is_empty(list));
     assert(xlist_vadd(list, john = cu_ctor(person_t, .name = strdup("John"))) == CU_OK);
+    assert(!xlist_is_empty(list));
     assert(xlist_vadd(list, marry = cu_ctor(person_t, .name = strdup("Marry"))) == CU_OK);
+    assert(!xlist_is_empty(list));
     assert(xlist_size(list) == 2);
-    assert(xlist_remove_data(list, john, &free_data) == CU_OK);
+    assert(xlist_remove_data(list, john) == CU_OK);
     assert(!john);
     assert(marry);
     assert(xlist_size(list) == 1);
-    assert(xlist_remove_data(list, marry, &free_data) == CU_OK);
+    assert(xlist_remove_data(list, marry) == CU_OK);
     assert(!john);
     assert(!marry);
     assert(xlist_size(list) == 0);
-    assert(xlist_flush(list, &free_data) == CU_OK);
+    assert(xlist_flush(list) == CU_OK);
     assert(xlist_vadd(list, john = cu_ctor(person_t, .name = strdup("John"))) == CU_OK);
     assert(xlist_vadd(list, marry = cu_ctor(person_t, .name = strdup("Marry"))) == CU_OK);
     assert(john && marry);
-    assert(xlist_flush(list, &free_data) == CU_OK); // free both persons
+    assert(xlist_flush(list) == CU_OK); // free both persons
     assert(!john && !marry);
-    assert(xlist_vdestroy(list) == CU_OK); // vdestroy because it's already flushed
+    assert(xlist_destroy(list) == CU_OK); // vdestroy because it's already flushed
 
     list = NULL;
-    assert(xlist_create(&list) == CU_OK);
+    assert(xlist_create(&(xlist_config_t) {
+        .data_free_fnc = &free_data
+    }, &list) == CU_OK);
     assert(xlist_vadd(list, john = cu_ctor(person_t, .name = strdup("John"))) == CU_OK);
     assert(xlist_vadd(list, marry = cu_ctor(person_t, .name = strdup("Marry"))) == CU_OK);
     assert(john && marry);
-    assert(xlist_destroy(list, &free_data) == CU_OK); // custom free fnc
+    assert(xlist_destroy(list) == CU_OK); // custom free fnc
     assert(!john && !marry);
 }
 
@@ -61,7 +68,7 @@ int main() {
     xlist_t list = NULL;
     assert(xlist_size(list) == CU_FAIL); // list is null
 
-    assert(xlist_create(&list) == CU_OK);
+    assert(xlist_create(NULL, &list) == CU_OK);
     assert(xlist_size(list) == 0);
 
     int a = 5;
@@ -74,7 +81,7 @@ int main() {
     assert(xlist_get_data(list, 1, &data) == CU_ERR_NOT_FOUND);
     assert(xlist_get_data(list, 0, &data) == CU_OK);
     assert(*(int*) data == a);
-    assert(xlist_vremove_data(list, data) == CU_OK); // remove a
+    assert(xlist_remove_data(list, data) == CU_OK); // remove a
     assert(xlist_size(list) == 0);
     assert(xlist_get_data(list, 0, &data) == CU_ERR_NOT_FOUND);
 
@@ -83,7 +90,7 @@ int main() {
     assert(xlist_size(list) == 2);
     assert(xlist_get_data(list, 1, &data) == CU_OK);
     assert(*(int*) data == a);
-    assert(xlist_vremove_data(list, data) == CU_OK); // delete both occurrences
+    assert(xlist_remove_data(list, data) == CU_OK); // delete both occurrences
     assert(xlist_size(list) == 0);
 
     assert(xlist_vadd(list, &a) == CU_OK);
@@ -93,20 +100,20 @@ int main() {
     assert(*(int*) data == a);
     assert(xlist_get_data(list, 1, &data) == CU_OK);
     assert(*(int*) data == b);
-    assert(xlist_vremove_data(list, data) == CU_OK); // remove b
+    assert(xlist_remove_data(list, data) == CU_OK); // remove b
     assert(xlist_size(list) == 1);
     assert(xlist_get_data(list, 0, &data) == CU_OK);
     assert(*(int*) data == a);
     assert(xlist_get_data(list, 1, &data) == CU_ERR_NOT_FOUND);
     assert(xlist_get_data(list, 0, &data) == CU_OK);
-    assert(xlist_vremove_data(list, data) == CU_OK); // remove a
+    assert(xlist_remove_data(list, data) == CU_OK); // remove a
     assert(xlist_size(list) == 0);
 
     assert(xlist_vadd(list, &a) == CU_OK);
     assert(xlist_vadd(list, &b) == CU_OK);
     assert(xlist_vadd(list, &c) == CU_OK);
     assert(xlist_size(list) == 3);
-    assert(xlist_vflush(list) == CU_OK); // remove all
+    assert(xlist_flush(list) == CU_OK); // remove all
     assert(xlist_size(list) == 0);
 
     assert(xlist_vadd(list, &a) == CU_OK);
@@ -123,7 +130,7 @@ int main() {
     assert(xlist_get(list, 0, &node_tmp) == CU_OK);
     assert(node == node_tmp);
 
-    assert(xlist_vdestroy(list) == CU_OK);
+    assert(xlist_destroy(list) == CU_OK);
 
     return 0;
 }

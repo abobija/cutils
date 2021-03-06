@@ -1,6 +1,7 @@
 #include "cmder.h"
-#include "estr.h"
 #include "cutils.h"
+#include "estr.h"
+#include "xlist.h"
 #include <getopt.h>
 #include <assert.h>
 
@@ -18,8 +19,7 @@ struct cmder_handle {
     bool name_as_cmdline_prefix;
     void* context;
     size_t cmdline_max_len;
-    cmder_cmd_handle_t* cmds;
-    uint16_t cmds_len;
+    xlist_t cmds;
 };
 
 typedef enum {
@@ -100,12 +100,16 @@ static void _free_gopts(cmder_gopts_t* gopts) {
 }
 
 static cu_err_t _validate_name(const char* name, uint maxlen) {
-    return estr_validate(name, &(estr_validation_t){
+    return estr_validate(name, &(estr_validation_t) {
         .length = true,
         .minlen = 1,
         .maxlen = maxlen,
         .no_whitespace = true
     });
+}
+
+static void _xlist_cmd_free(void* data) {
+    _cmd_free((cmder_cmd_handle_t) data);
 }
 
 cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
@@ -134,6 +138,8 @@ cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
     ));
 
     _name = NULL;
+
+    cu_err_check(xlist_create(&(xlist_config_t){ .data_free_fnc = &_xlist_cmd_free }, &cmder->cmds));
 
     goto _return;
 _error:
@@ -267,17 +273,13 @@ _return:
 }
 
 static cu_err_t _getoopts_recalc(cmder_cmd_handle_t cmd) {
+    cu_err_t err = CU_OK;
     char* getoopts = NULL;
-    cu_err_t err = cmder_getoopts(cmd, &getoopts);
-
-    if(err != CU_OK) {
-        return err;
-    }
-    
+    cu_err_checkr(cmder_getoopts(cmd, &getoopts));
     free(cmd->getoopts); // free old
     cmd->getoopts = getoopts;
 
-    return CU_OK;
+    return err;
 }
 
 cu_err_t cmder_get_cmd_by_name(cmder_handle_t cmder, const char* cmd_name, cmder_cmd_handle_t* out_cmd_handle) {
@@ -289,15 +291,17 @@ cu_err_t cmder_get_cmd_by_name(cmder_handle_t cmder, const char* cmd_name, cmder
         return CU_ERR_EMPTY_STRING;
     }
 
-    for(uint16_t i = 0; i < cmder->cmds_len; i++) {
-        if(estr_eq(cmd_name, cmder->cmds[i]->name)) {
+    xlist_each(cmder->cmds, {
+        cmder_cmd_handle_t cmd = (cmder_cmd_handle_t) xnode->data;
+        
+        if(estr_eq(cmd_name, cmd->name)) {
             if(out_cmd_handle) {
-                *out_cmd_handle = cmder->cmds[i];
+                *out_cmd_handle = cmd;
             }
             
             return CU_OK;
         }
-    }
+    });
 
     return CU_ERR_NOT_FOUND;
 }
@@ -327,11 +331,7 @@ cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_
 
     _name = NULL;
 
-    cmder_cmd_handle_t* cmds = NULL;
-    cu_mem_check(cmds = realloc(cmder->cmds, ++cmder->cmds_len * sizeof(cmder_cmd_handle_t)));
-
-    cmder->cmds = cmds;
-    cmder->cmds[cmder->cmds_len - 1] = _cmd;
+    cu_err_check(xlist_vadd(cmder->cmds, _cmd));
 
     goto _return;
 _error:
@@ -1090,7 +1090,7 @@ cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline, const void* run_co
         return CU_ERR_EMPTY_STRING;
     }
 
-    if(cmder->cmds_len <= 0) // no registered cmds
+    if(xlist_is_empty(cmder->cmds)) // no registered cmds
         return CU_ERR_CMDER_NO_CMDS;
 
     if(cmdline_len > cmder->cmdline_max_len)
@@ -1129,7 +1129,7 @@ cu_err_t cmder_destroy(cmder_handle_t cmder) {
         return CU_ERR_INVALID_ARG;
     }
 
-    cu_list_tfreex(cmder->cmds, uint16_t, cmder->cmds_len, _cmd_free);
+    xlist_destroy(cmder->cmds);
     free(cmder->name);
     cmder->name = NULL;
     cmder->context = NULL;
