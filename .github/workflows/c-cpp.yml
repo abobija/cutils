@@ -13,6 +13,8 @@ jobs:
         run: make cutils.test
       - name: Test estr
         run: make estr.test
+      - name: Test xlist
+        run: make xlist.test
       - name: Test cmder
         run: make cmder.test
       - name: Test all
