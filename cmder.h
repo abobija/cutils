@@ -10,6 +10,8 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+#define CMDER_NAME_MAX_LENGTH 50
+#define CMDER_CMD_NAME_MAX_LENGTH 70
 #define CMDER_DEFAULT_CMDLINE_MAX_LEN 512
 
 #define CU_ERR_CMDER_BASE                (1000)

@@ -1,5 +1,5 @@
 CCFLAGS = -I.
-CCWARNINGS = -Wall -Wextra
+CCWARNINGS = -Wall -Wextra# -Wpedantic
 CC = gcc $(CCFLAGS) $(CCWARNINGS)
 
 ESTR_OBJS = estr.o

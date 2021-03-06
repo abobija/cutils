@@ -94,6 +94,22 @@ int main() {
     assert(cmder_create(NULL, &cmder) == CU_ERR_INVALID_ARG);
 
     assert(cmder_create(&(cmder_t){
+    }, &cmder) == CU_OK); // name is not mandatory
+    cmder_destroy(cmder);
+
+    assert(cmder_create(&(cmder_t){
+        .name_as_cmdline_prefix = true
+    }, &cmder) == CU_ERR_INVALID_ARG); // no name
+
+    assert(cmder_create(&(cmder_t){
+        .name = ""
+    }, &cmder) == CU_ERR_ESTR_INVALID_OUT_OF_BOUNDS); // min len 1
+
+    assert(cmder_create(&(cmder_t){
+        .name = "   "
+    }, &cmder) == CU_ERR_ESTR_INVALID_WHITESPACE); // whitespace not allowed
+
+    assert(cmder_create(&(cmder_t){
         .name = "+esp32",
         .context = &data,
         .name_as_cmdline_prefix = true
@@ -107,6 +123,38 @@ int main() {
         .name = "help",
         .callback = &help_cb
     }) == CU_OK);
+
+    assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){
+        .callback = &help_cb
+    }) == CU_ERR_INVALID_ARG); // no name
+
+    assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){
+        .name = "ooo"
+    }) == CU_ERR_INVALID_ARG); // no name
+
+    assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){
+        .name = "",
+        .callback = &help_cb
+    }) == CU_ERR_ESTR_INVALID_OUT_OF_BOUNDS); // min len 1
+
+    assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){
+        .name = "   ",
+        .callback = &help_cb
+    }) == CU_ERR_ESTR_INVALID_WHITESPACE); // whitespace not allowed
+
+    char* name = estr_repeat_chr('x', CMDER_CMD_NAME_MAX_LENGTH);
+    assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){
+        .name = name,
+        .callback = &help_cb
+    }) == CU_OK);
+    free(name);
+
+    name = estr_repeat_chr('z', CMDER_CMD_NAME_MAX_LENGTH + 1);
+    assert(cmder_add_vcmd(cmder, &(cmder_cmd_t){
+        .name = name,
+        .callback = &help_cb
+    }) == CU_ERR_ESTR_INVALID_OUT_OF_BOUNDS);
+    free(name);
 
     cmder_cmd_handle_t echo;
     
@@ -200,15 +248,12 @@ int main() {
     assert(cmder_vrun(cmder, "+esp32 ok") == CU_OK); // ok
     assert(ok_fired);
 
-    const char* too_long_cmd = "+esp32 echo -m aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    
-    // default max is 512, this command is 524
+    char* long_str = estr_repeat_chr('x', CMDER_DEFAULT_CMDLINE_MAX_LEN);
+    char* too_long_cmd = estr_cat("+esp32 echo -m ", long_str);
+
     assert(cmder_vrun(cmder, too_long_cmd) == CU_ERR_CMDER_CMDLINE_TOO_BIG);
+    free(long_str);
+    free(too_long_cmd);
 
     echo_fired = false;
     assert(cmder_vrun(cmder, "+esp32 echo -m \"whats up\"") == CU_OK); // ok

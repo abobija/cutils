@@ -37,6 +37,50 @@ typedef struct {
     uint16_t margs_len;        /*<! Mandatory args length */
 } cmder_gopts_t;
 
+static void _opt_free(cmder_opt_handle_t opt) {
+    if(!opt)
+        return;
+
+    free(opt->description);
+    free(opt);
+}
+
+static void _cmd_free(cmder_cmd_handle_t cmd) {
+    if(!cmd)
+        return;
+
+    cmd->cmder = NULL;
+    cmd->callback = NULL;
+    free(cmd->name);
+    cmd->name = NULL;
+    free(cmd->getoopts);
+    cmd->getoopts = NULL;
+    cu_list_tfreex(cmd->opts, uint16_t, cmd->opts_len, _opt_free);
+    free(cmd);
+}
+
+static void _optval_free(cmder_optval_t* optval) {
+    if(!optval)
+        return;
+    
+    optval->opt = NULL;
+    optval->state = false;
+    optval->val = NULL; // don't free, it's a reference to argv item
+    free(optval);
+}
+
+static void _cmdval_free(cmder_cmdval_t* cmdval) {
+    if(!cmdval)
+        return;
+    
+    cmdval->cmder = NULL;
+    cmdval->context = NULL;
+    cu_list_tfreex(cmdval->optvals, uint16_t, cmdval->optvals_len, _optval_free);
+    cmdval->extra_args = NULL; // don't free, it's a reference to argv items
+    cmdval->extra_args_len = 0;
+    free(cmdval);
+}
+
 static void _free_gopts(cmder_gopts_t* gopts) {
     if(!gopts) {
         return;
@@ -55,6 +99,15 @@ static void _free_gopts(cmder_gopts_t* gopts) {
     free(gopts);
 }
 
+static cu_err_t _validate_name(const char* name, uint maxlen) {
+    return estr_validate(name, &(estr_validation_t){
+        .length = true,
+        .minlen = 1,
+        .maxlen = maxlen,
+        .no_whitespace = true
+    });
+}
+
 cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
     if(!config || !out_handle)
         return CU_ERR_INVALID_ARG;
@@ -62,9 +115,17 @@ cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
     cu_err_t err = CU_OK;
     cmder_handle_t cmder = NULL;
     char* _name = NULL;
-    
-    cu_mem_check(_name = strdup(config->name));
 
+    bool validate_name = config->name_as_cmdline_prefix || config->name;
+
+    if(validate_name && (err = _validate_name(config->name, CMDER_NAME_MAX_LENGTH)) != CU_OK) {
+        return err;
+    }
+
+    if(config->name) {
+        cu_mem_check(_name = strdup(config->name));
+    }
+    
     cu_mem_check(cmder = cu_tctor(cmder_handle_t, struct cmder_handle,
         .name = _name,
         .name_as_cmdline_prefix = config->name_as_cmdline_prefix,
@@ -241,38 +302,17 @@ cu_err_t cmder_get_cmd_by_name(cmder_handle_t cmder, const char* cmd_name, cmder
     return CU_ERR_NOT_FOUND;
 }
 
-static void _opt_free(cmder_opt_handle_t opt) {
-    if(!opt)
-        return;
-
-    free(opt->description);
-    free(opt);
-}
-
-static void _cmd_free(cmder_cmd_handle_t cmd) {
-    if(!cmd)
-        return;
-
-    cmd->cmder = NULL;
-    cmd->callback = NULL;
-    free(cmd->name);
-    cmd->name = NULL;
-    free(cmd->getoopts);
-    cmd->getoopts = NULL;
-    cu_list_tfreex(cmd->opts, uint16_t, cmd->opts_len, _opt_free);
-    free(cmd);
-}
-
 cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_t* out_cmd) {
-    if(!cmder || !cmd)
+    if(!cmder || !cmd || !cmd->callback || !cmd->name)
         return CU_ERR_INVALID_ARG;
 
     cu_err_t err = CU_OK;
     cmder_cmd_handle_t _cmd = NULL;
     char* _name = NULL;
 
-    if(!cmd->callback) // no callback, no need to register cmd
-        return CU_ERR_INVALID_ARG;
+    if((err = _validate_name(cmd->name, CMDER_CMD_NAME_MAX_LENGTH)) != CU_OK) {
+        return err;
+    }
     
     if(cmder_get_cmd_by_name(cmder, cmd->name, NULL) == CU_OK) // already exist
         return CU_ERR_CMDER_CMD_EXIST;
@@ -888,28 +928,6 @@ _return:
     if(out_len) { *out_len = len; }
 
     return err;
-}
-
-static void _optval_free(cmder_optval_t* optval) {
-    if(!optval)
-        return;
-    
-    optval->opt = NULL;
-    optval->state = false;
-    optval->val = NULL; // no need to free. it's reference to argv item
-    free(optval);
-}
-
-static void _cmdval_free(cmder_cmdval_t* cmdval) {
-    if(!cmdval)
-        return;
-    
-    cmdval->cmder = NULL;
-    cmdval->context = NULL;
-    cu_list_tfreex(cmdval->optvals, uint16_t, cmdval->optvals_len, _optval_free);
-    cmdval->extra_args = NULL; // don't free()
-    cmdval->extra_args_len = 0;
-    free(cmdval);
 }
 
 static cmder_opt_handle_t _first_mandatory_opt_which_is_not_set(cmder_optval_t** optvals, uint16_t len) {

@@ -315,3 +315,79 @@ bool estr_contains_unescaped_chr(const char* str, char chr) {
 
     return false;
 }
+
+bool estr_is_empty_ws(const char* str) {
+    if(! str) {
+        return true;
+    }
+
+    char* ptr = (char*) str;
+
+    while(*ptr) {
+        if(!estr_chr_is_ws(*ptr++)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+char* estr_repeat_chr(char chr, uint times) {
+    if(times == 0) {
+        return NULL;
+    }
+
+    char* str = malloc(times + 1);
+
+    if(!str) {
+        return NULL;
+    }
+
+    for(uint i = 0; i < times; i++) {
+        str[i] = chr;
+    }
+
+    str[times] = '\0';
+
+    return str;
+}
+
+bool estr_contains_ws(const char* str) {
+    if(!str) {
+        return false;
+    }
+
+    char* ptr = (char*) str;
+
+    while(*ptr) {
+        if(estr_chr_is_ws(*ptr++)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+cu_err_t estr_validate(const char* str, estr_validation_t* validation) {
+    if(!str || !validation) {
+        return CU_ERR_INVALID_ARG;
+    }
+
+    if(validation->no_whitespace && estr_contains_ws(str)) {
+        return CU_ERR_ESTR_INVALID_WHITESPACE;
+    }
+
+    if(validation->length) {
+        uint len = strlen(str);
+
+        if(validation->minlen > 0 && validation->maxlen == 0) {
+            validation->maxlen = validation->minlen;
+        }
+
+        if(len < validation->minlen || len > validation->maxlen) {
+            return CU_ERR_ESTR_INVALID_OUT_OF_BOUNDS;
+        }
+    }
+
+    return CU_OK;
+}

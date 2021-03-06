@@ -5,9 +5,21 @@
 extern "C" {
 #endif
 
+#include "cutils.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define CU_ERR_ESTR_BASE                    (2000)
+#define CU_ERR_ESTR_INVALID_WHITESPACE      (CU_ERR_ESTR_BASE + 1)
+#define CU_ERR_ESTR_INVALID_OUT_OF_BOUNDS   (CU_ERR_ESTR_BASE + 1)
+
+typedef struct {
+    bool length;
+    uint minlen;
+    uint maxlen;
+    bool no_whitespace;
+} estr_validation_t;
 
 /**
  * @brief Concatenate optional number of strings. User need to release the resulting string with a free function.
@@ -147,6 +159,38 @@ bool estr_is_trimmed(const char* str);
  *         In special case when string is null, false will be returned
  */
 bool estr_contains_unescaped_chr(const char* str, char chr);
+
+/**
+ * @brief Checks if string is empty (string is empty if it contains only whitespace chars or his length is zero)
+ * @param str String
+ * @return true if string is empty (or NULL)
+ */
+bool estr_is_empty_ws(const char* str);
+
+/**
+ * @brief Make string by repeating character multiple times.
+ *        Result needs to be freed
+ * @param chr Character
+ * @param times How much time chr needs to be repeated
+ * @return pointer to allocated null-terminated string, or NULL on failure (no memory) or if times == 0
+ */
+char* estr_repeat_chr(char chr, uint times);
+
+/**
+ * @brief Check if string contains whitespace
+ * @param str String
+ * @return true if string contains whitespace, otherwise false.
+ *         If str is NULL, false will be returned.
+ */
+bool estr_contains_ws(const char* str);
+
+/**
+ * @brief Validate string by schema
+ * @param str String
+ * @param validation Validation schema
+ * @return CU_OK if string is valid
+ */
+cu_err_t estr_validate(const char* str, estr_validation_t* validation);
 
 #ifdef __cplusplus
 }

@@ -15,6 +15,7 @@ typedef int cu_err_t;
 #define CU_ERR_NOT_FOUND     (-5)
 #define CU_ERR_EMPTY_STRING  (-6)
 #define CU_ERR_INVALID_CHAR  (-7)
+#define CU_ERR_OUT_OF_BOUNDS (-8)
 
 /**
  * @brief Universal handle constructor. User is responsible for freeing the resulting object
@@ -24,7 +25,7 @@ typedef int cu_err_t;
  * @return Pointer to dynamically allocated struct
  */
 #define cu_tctor(handle_type, struct, ...) \
-    ({ handle_type obj = calloc(1, sizeof(struct)); if(obj) { *obj = (struct){ __VA_ARGS__ }; } obj; })
+    __extension__ ({ handle_type obj = calloc(1, sizeof(struct)); if(obj) { *obj = (struct){ __VA_ARGS__ }; } obj; })
 
 /**
  * @brief Universal struct (type) constructor. User is responsible for freeing the resulting object
@@ -45,7 +46,7 @@ typedef int cu_err_t;
  * @return void
  */
 #define cu_list_tfreex(list, len_type, len, item_free_fnc) \
-    ({if(list) { for(len_type i = 0; i < len; i++) { item_free_fnc(list[i]); list[i] = NULL; } free(list); list = NULL; len = 0; }})
+    __extension__ ({ if(list) { for(len_type i = 0; i < len; i++) { item_free_fnc(list[i]); list[i] = NULL; } free(list); list = NULL; len = 0; } })
 
 /**
  * @brief Free the list (array of pointers) with custom type for the length variable.

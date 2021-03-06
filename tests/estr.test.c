@@ -199,6 +199,100 @@ static void test_escaping() {
     assert(estr_contains_unescaped_chr("asfd\"test\"", '\"'));
 }
 
+static void test_empty() {
+    assert(estr_is_empty_ws(NULL));
+    assert(estr_is_empty_ws(""));
+    assert(estr_is_empty_ws(" "));
+    assert(! estr_is_empty_ws("  d   "));
+    assert(estr_is_empty_ws("                    "));
+    assert(! estr_is_empty_ws("    d"));
+    assert(! estr_is_empty_ws("g    "));
+}
+
+static void test_repeat() {
+    char* str = NULL;
+    assert(! estr_repeat_chr('a', 0));
+    assert((str = estr_repeat_chr('x', 5)));
+    assert(estr_eq(str, "xxxxx"));
+    free(str);
+}
+
+static void test_ws_contains() {
+    assert(! estr_contains_ws("asdf"));
+    assert(estr_contains_ws("as df"));
+    assert(estr_contains_ws("asd    f"));
+}
+
+static void test_validation() {
+    assert(estr_validate(NULL, NULL) == CU_ERR_INVALID_ARG);
+    assert(estr_validate("", NULL) == CU_ERR_INVALID_ARG);
+    assert(estr_validate(NULL, &(estr_validation_t){}) == CU_ERR_INVALID_ARG);
+    assert(estr_validate("", &(estr_validation_t){
+    }) == CU_OK);
+    assert(estr_validate("", &(estr_validation_t){
+        .length = true
+    }) == CU_OK);
+    assert(estr_validate("", &(estr_validation_t){
+        .length = true,
+        .minlen = 1
+    }) == CU_ERR_ESTR_INVALID_OUT_OF_BOUNDS);
+    assert(estr_validate("a", &(estr_validation_t){
+        .length = true,
+        .minlen = 1
+    }) == CU_OK);
+    assert(estr_validate("aa", &(estr_validation_t){
+        .length = true,
+        .minlen = 1
+    }) == CU_ERR_ESTR_INVALID_OUT_OF_BOUNDS); // maxlen is same as minlen
+    assert(estr_validate("a", &(estr_validation_t){
+        .length = true,
+        .minlen = 1,
+        .maxlen = 3
+    }) == CU_OK);
+    assert(estr_validate("aa", &(estr_validation_t){
+        .length = true,
+        .minlen = 1,
+        .maxlen = 3
+    }) == CU_OK);
+    assert(estr_validate("aaa", &(estr_validation_t){
+        .length = true,
+        .minlen = 1,
+        .maxlen = 3
+    }) == CU_OK);
+    assert(estr_validate("aaaa", &(estr_validation_t){
+        .length = true,
+        .minlen = 1,
+        .maxlen = 3
+    }) == CU_ERR_ESTR_INVALID_OUT_OF_BOUNDS);
+    assert(estr_validate("", &(estr_validation_t){
+        .no_whitespace = true
+    }) == CU_OK);
+    assert(estr_validate("a", &(estr_validation_t){
+        .no_whitespace = true
+    }) == CU_OK);
+    assert(estr_validate("abc", &(estr_validation_t){
+        .no_whitespace = true
+    }) == CU_OK);
+    assert(estr_validate("ab c", &(estr_validation_t){
+        .no_whitespace = true
+    }) == CU_ERR_ESTR_INVALID_WHITESPACE);
+    assert(estr_validate(" abc", &(estr_validation_t){
+        .no_whitespace = true
+    }) == CU_ERR_ESTR_INVALID_WHITESPACE);
+    assert(estr_validate("abc ", &(estr_validation_t){
+        .no_whitespace = true
+    }) == CU_ERR_ESTR_INVALID_WHITESPACE);
+    assert(estr_validate("a bc", &(estr_validation_t){
+        .no_whitespace = true
+    }) == CU_ERR_ESTR_INVALID_WHITESPACE);
+    assert(estr_validate("ab    c", &(estr_validation_t){
+        .no_whitespace = true
+    }) == CU_ERR_ESTR_INVALID_WHITESPACE);
+    assert(estr_validate("  ", &(estr_validation_t){
+        .no_whitespace = true
+    }) == CU_ERR_ESTR_INVALID_WHITESPACE);
+}
+
 int main() {
     test_estr_eq();
     test_estrn_eq();
@@ -212,6 +306,10 @@ int main() {
     test_estr_rep();
     test_estr_trim();
     test_escaping();
+    test_empty();
+    test_repeat();
+    test_ws_contains();
+    test_validation();
 
     return 0;
 }
