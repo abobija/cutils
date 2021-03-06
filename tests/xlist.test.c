@@ -1,4 +1,4 @@
-#include "../xlist.h"
+#include "xlist.h"
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>

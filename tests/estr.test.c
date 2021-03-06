@@ -1,5 +1,5 @@
-#include "../estr.h"
-#include "../cutils.h"
+#include "estr.h"
+#include "cutils.h"
 #include <assert.h>
 
 static void test_estr_eq() {

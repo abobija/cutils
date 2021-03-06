@@ -1,5 +1,5 @@
-#include "../cutils.h"
-#include "../estr.h"
+#include "cutils.h"
+#include "estr.h"
 #include <assert.h>
 
 struct test_struct {

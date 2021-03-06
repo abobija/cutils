@@ -1,6 +1,6 @@
-#include "../cmder.h"
-#include "../estr.h"
-#include "../cutils.h"
+#include "cmder.h"
+#include "estr.h"
+#include "cutils.h"
 #include <assert.h>
 #include <stdio.h>
 
