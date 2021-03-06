@@ -33,6 +33,12 @@ typedef struct {
         data_type xdata = (data_type) xnode->data; {CODE}; xnode = xnode->next; \
     } } list; })
 
+#define xlist_get_tdata(list, index, data_type, ref) \
+    __extension__ ({ \
+        void* data = NULL; cu_err_t err = xlist_get_data(list, index, &data); \
+        if(err == CU_OK) { ref = (data_type) data; } err; \
+    })
+
 #define xlist_vadd_to_back(list, data) xlist_add_to_back(list, data, NULL)
 #define xlist_vadd_to_front(list, data) xlist_add_to_front(list, data, NULL)
 #define xlist_add(list, data, node) xlist_add_to_back(list, data, node)
