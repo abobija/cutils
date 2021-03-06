@@ -76,8 +76,8 @@ static void _cmdval_free(cmder_cmdval_t* cmdval) {
     cmdval->context = NULL;
     xlist_destroy(cmdval->optvals);
     cmdval->optvals = NULL;
-    cmdval->extra_args = NULL; // don't free, it's a reference to argv items
-    cmdval->extra_args_len = 0;
+    xlist_destroy(cmdval->extra_args);
+    cmdval->extra_args = NULL;
     free(cmdval);
 }
 
@@ -1046,15 +1046,12 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
         cmdval->error_option_name = notset_opt->name;
         goto _error;
     }
+    
+    if(argc - optind > 0) {
+        cu_err_check(xlist_create(NULL, &cmdval->extra_args));
 
-    cmdval->extra_args_len = 0;
-    for(int i = optind; i < argc; i++, cmdval->extra_args_len++);
-
-    if(cmdval->extra_args_len > 0) {
-        cu_mem_check(cmdval->extra_args = malloc(cmdval->extra_args_len * sizeof(char*)));
-
-        for(int i = optind, j = 0; i < argc; i++, j++) {
-            cmdval->extra_args[j] = argv[i];
+        for(int i = optind; i < argc; i++) {
+            cu_err_check(xlist_vadd(cmdval->extra_args, argv[i]));
         }
     }
 
@@ -1063,8 +1060,8 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
 _error:
     xlist_destroy(cmdval->optvals);
     cmdval->optvals = NULL;
-    cmdval->extra_args = NULL; // don't free
-    cmdval->extra_args_len = 0;
+    xlist_destroy(cmdval->extra_args);
+    cmdval->extra_args = NULL;
     cmd->callback(cmdval);
 _return:
     _cmdval_free(cmdval);

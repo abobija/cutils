@@ -51,9 +51,11 @@ void echo_cb(cmder_cmdval_t* cmdval) {
     echo_message = strdup(optval->val);
     assert(cmder_get_optval(cmdval, 'x', &optval) == CU_ERR_NOT_FOUND);
     assert(cmder_get_optval(cmdval, 'x', NULL) == CU_ERR_NOT_FOUND);
-    echo_extra_args_len = cmdval->extra_args_len;
-    if(cmdval->extra_args_len > 0 && capture_extra_arg0) {
-        echo_extra_arg0 = strdup(cmdval->extra_args[0]);
+    echo_extra_args_len = !cmdval->extra_args ? 0 : xlist_size(cmdval->extra_args);
+    if(echo_extra_args_len > 0 && capture_extra_arg0) {
+        void* arg = NULL;
+        assert(xlist_get_data(cmdval->extra_args, 0, &arg) == CU_OK);
+        echo_extra_arg0 = strdup((char*) arg);
     }
 }
 
@@ -539,16 +541,22 @@ static void error_cb(cmder_cmdval_t* cmdval) {
     cmdval_err = cmdval->error;
     unknown_option = '\0';
 
-    if(capture_extra0 && cmdval->extra_args_len > 0) {
-        extra0 = strdup(cmdval->extra_args[0]);
+    void* arg = NULL;
+    int extra_len = !cmdval->extra_args ? 0 : xlist_size(cmdval->extra_args);
+
+    if(capture_extra0 && extra_len > 0) {
+        assert(xlist_get_data(cmdval->extra_args, 0, &arg) == CU_OK);
+        extra0 = strdup((char*) arg);
     }
 
-    if(capture_extra1 && cmdval->extra_args_len > 1) {
-        extra1 = strdup(cmdval->extra_args[1]);
+    if(capture_extra1 && extra_len > 1) {
+        assert(xlist_get_data(cmdval->extra_args, 1, &arg) == CU_OK);
+        extra1 = strdup((char*) arg);
     }
 
-    if(capture_extra2 && cmdval->extra_args_len > 2) {
-        extra2 = strdup(cmdval->extra_args[2]);
+    if(capture_extra2 && extra_len > 2) {
+        assert(xlist_get_data(cmdval->extra_args, 2, &arg) == CU_OK);
+        extra2 = strdup((char*) arg);
     }
 
     if(cmdval_err != CMDER_CMDVAL_NO_ERROR) {

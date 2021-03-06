@@ -67,8 +67,7 @@ typedef struct {
     const void* context;
     const void* run_context;
     xlist_t optvals;
-    const char** extra_args;
-    uint16_t extra_args_len;
+    xlist_t extra_args;
     cmder_cmdval_err_t error;
     char error_option_name;
 } cmder_cmdval_t;
