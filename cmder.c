@@ -1,7 +1,6 @@
 #include "cmder.h"
 #include "cutils.h"
 #include "estr.h"
-#include "xlist.h"
 #include <getopt.h>
 #include <assert.h>
 
@@ -75,7 +74,8 @@ static void _cmdval_free(cmder_cmdval_t* cmdval) {
     
     cmdval->cmder = NULL;
     cmdval->context = NULL;
-    cu_list_tfreex(cmdval->optvals, uint16_t, cmdval->optvals_len, _optval_free);
+    xlist_destroy(cmdval->optvals);
+    cmdval->optvals = NULL;
     cmdval->extra_args = NULL; // don't free, it's a reference to argv items
     cmdval->extra_args_len = 0;
     free(cmdval);
@@ -114,6 +114,10 @@ static void _xlist_cmd_free(void* data) {
 
 static void _xlist_opt_free(void* data) {
     _opt_free((cmder_opt_handle_t) data);
+}
+
+static void _xlist_optval_free(void* data) {
+    _optval_free((cmder_optval_t*) data);
 }
 
 cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
@@ -835,21 +839,19 @@ cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t**
         return CU_ERR_INVALID_ARG;
     }
 
-    cmder_optval_t** optvals = cmdval->optvals;
-
-    if(!optvals || cmdval->optvals_len <= 0) {
+    if(!cmdval->optvals || xlist_is_empty(cmdval->optvals)) {
         return CU_ERR_CMDER_NO_OPTVALS;
     }
 
-    for(uint16_t i = 0; i < cmdval->optvals_len; i++) {
-        if(optvals[i]->opt->name == optname) {
+    xlist_each(cmder_optval_t*, cmdval->optvals, {
+        if(xdata->opt->name == optname) {
             if(out_optval) {
-                *out_optval = optvals[i];
+                *out_optval = xdata;
             }
 
             return CU_OK;
         }
-    }
+    });
 
     return CU_ERR_NOT_FOUND;
 }
@@ -928,20 +930,16 @@ _return:
     return err;
 }
 
-static cmder_opt_handle_t _first_mandatory_opt_which_is_not_set(cmder_optval_t** optvals, uint16_t len) {
-    if(!optvals || len == 0) {
+static cmder_opt_handle_t _first_mandatory_opt_which_is_not_set(cmder_cmdval_t* cmdval) {
+    if(!cmdval || !cmdval->optvals || xlist_is_empty(cmdval->optvals)) {
         return NULL;
     }
 
-    cmder_opt_handle_t opt;
-
-    for(uint16_t i = 0; i < len; i++) {
-        opt = optvals[i]->opt;
-
-        if(opt->is_arg && !opt->is_optional && !optvals[i]->val) {
-            return opt;
+    xlist_each(cmder_optval_t*, cmdval->optvals, {
+        if(xdata->opt->is_arg && !xdata->opt->is_optional && !xdata->val) {
+            return xdata->opt;
         }
-    }
+    });
 
     return NULL;
 }
@@ -996,15 +994,16 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
     ));
 
     if(! xlist_is_empty(cmd->opts)) {
-        // make one optval in cmdval for every opt in cmd
-        cmdval->optvals_len = xlist_size(cmd->opts);
-        cu_mem_check(cmdval->optvals = malloc(cmdval->optvals_len * sizeof(cmder_optval_t*)));
+        // making one optval in cmdval for every opt in cmd
 
-        uint16_t i = 0;
+        cu_err_check(xlist_create(&(xlist_config_t){
+            .data_free_fnc = &_xlist_optval_free
+        }, &cmdval->optvals));
+
         xlist_each(cmder_opt_handle_t, cmd->opts, {
-            cu_mem_check(cmdval->optvals[i++] = cu_ctor(cmder_optval_t,
+            cu_err_check(xlist_vadd(cmdval->optvals, cu_ctor(cmder_optval_t,
                 .opt = xdata
-            ));
+            )));
         });
     }
 
@@ -1039,7 +1038,7 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
         }
     }
 
-    cmder_opt_handle_t notset_opt = _first_mandatory_opt_which_is_not_set(cmdval->optvals, cmdval->optvals_len);
+    cmder_opt_handle_t notset_opt = _first_mandatory_opt_which_is_not_set(cmdval);
 
     if(notset_opt) {
         err = CU_ERR_CMDER_OPT_VAL_MISSING;
@@ -1062,7 +1061,8 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
     cmd->callback(cmdval);
     goto _return;
 _error:
-    cu_list_tfreex(cmdval->optvals, uint16_t, cmdval->optvals_len, _optval_free);
+    xlist_destroy(cmdval->optvals);
+    cmdval->optvals = NULL;
     cmdval->extra_args = NULL; // don't free
     cmdval->extra_args_len = 0;
     cmd->callback(cmdval);

@@ -19,7 +19,6 @@ void help_cb(cmder_cmdval_t* cmdval) {
     help_fired = true;
     assert(cmdval->cmder);
     assert(!cmdval->optvals);
-    assert(cmdval->optvals_len == 0);
     int* ctx = (int*) cmdval->context;
     assert(ctx && ctx == &data && *ctx == data);
     assert(*ctx == 1337);
@@ -39,7 +38,7 @@ void echo_cb(cmder_cmdval_t* cmdval) {
     captured_echo_run_context = cmdval->run_context;
     assert(cmdval->cmder);
     assert(cmdval->optvals);
-    assert(cmdval->optvals_len == 1);
+    assert(xlist_size(cmdval->optvals) == 1);
     cmder_optval_t* optval;
     assert(cmder_get_optval(NULL, 'm', &optval) == CU_ERR_INVALID_ARG);
     assert(cmder_get_optval(cmdval, 'm', NULL) == CU_OK);

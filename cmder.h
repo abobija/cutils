@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "cutils.h"
+#include "xlist.h"
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -65,8 +66,7 @@ typedef struct {
     cmder_cmd_handle_t cmd;
     const void* context;
     const void* run_context;
-    cmder_optval_t** optvals;
-    uint16_t optvals_len;
+    xlist_t optvals;
     const char** extra_args;
     uint16_t extra_args_len;
     cmder_cmdval_err_t error;
