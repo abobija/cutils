@@ -147,7 +147,7 @@ cu_err_t cmder_create(cmder_t* config, cmder_handle_t* out_handle) {
 
     _name = NULL;
 
-    cu_err_check(xlist_create(&(xlist_config_t){ .data_free_fnc = &_xlist_cmd_free }, &cmder->cmds));
+    cu_err_check(xlist_create(&(xlist_config_t){ .data_free_handler = &_xlist_cmd_free }, &cmder->cmds));
 
     goto _return;
 _error:
@@ -335,8 +335,8 @@ cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_
 
     _name = NULL;
 
-    cu_err_check(xlist_create(&(xlist_config_t){ .data_free_fnc = &_xlist_opt_free }, &_cmd->opts));
-    cu_err_check(xlist_vadd(cmder->cmds, _cmd));
+    cu_err_check(xlist_create(&(xlist_config_t){ .data_free_handler = &_xlist_opt_free }, &_cmd->opts));
+    cu_err_negative_check(xlist_vadd(cmder->cmds, _cmd));
 
     goto _return;
 _error:
@@ -395,7 +395,7 @@ cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handl
 
     _desc = NULL;
 
-    cu_err_check(xlist_vadd(cmd->opts, _opt));
+    cu_err_negative_check(xlist_vadd(cmd->opts, _opt));
     cu_err_check(_getoopts_recalc(cmd));
 
     goto _return;
@@ -997,11 +997,11 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
         // making one optval in cmdval for every opt in cmd
 
         cu_err_check(xlist_create(&(xlist_config_t){
-            .data_free_fnc = &_xlist_optval_free
+            .data_free_handler = &_xlist_optval_free
         }, &cmdval->optvals));
 
         xlist_each(cmder_opt_handle_t, cmd->opts, {
-            cu_err_check(xlist_vadd(cmdval->optvals, cu_ctor(cmder_optval_t,
+            cu_err_negative_check(xlist_vadd(cmdval->optvals, cu_ctor(cmder_optval_t,
                 .opt = xdata
             )));
         });
@@ -1051,7 +1051,7 @@ static cu_err_t _cmder_run_args(cmder_handle_t cmder, int argc, char** argv, con
         cu_err_check(xlist_create(NULL, &cmdval->extra_args));
 
         for(int i = optind; i < argc; i++) {
-            cu_err_check(xlist_vadd(cmdval->extra_args, argv[i]));
+            cu_err_negative_check(xlist_vadd(cmdval->extra_args, argv[i]));
         }
     }
 

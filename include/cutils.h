@@ -81,6 +81,9 @@ typedef int cu_err_t;
 #define cu_err_checkl(EXP, label) \
     if((err = (EXP)) != CU_OK) { goto label; }
 
+#define cu_err_negative_check(EXP) \
+    if((err = (EXP)) < 0) { goto _error; } else { err = CU_OK; }
+
 #define cu_err_check(EXP) \
     cu_err_checkl(EXP, _error)
 
