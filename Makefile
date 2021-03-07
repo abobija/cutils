@@ -1,70 +1,65 @@
-CCFLAGS     = -Iinclude -MD -MP
-CCWARNINGS  = -Wall -Wextra# -Wpedantic
+all:
+MAKEFLAGS  += -r
+
+INCDIR      = include
 SRCDIR      = src
-TESTSDIR    = tests
-OUTDIR      = build
-OBJDIR      = $(OUTDIR)/obj
-BINDIR      = $(OUTDIR)/bin
-SRCOBJ      = $(OBJDIR)/$(SRCDIR)
-TESTOBJ     = $(OBJDIR)/$(TESTSDIR)
-TESTBIN     = $(BINDIR)/$(TESTSDIR)
-CC          = gcc $(CCFLAGS) $(CCWARNINGS)
+BUILDDIR    = build
+OBJDIR      = ${BUILDDIR}/obj
+BINDIR      = ${BUILDDIR}/bin
+TESTSSRC    = tests
+TESTSBIN    = ${BINDIR}/tests
 
-ESTR_OBJS   = $(SRCOBJ)/estr.o
-XLIST_OBJS  = $(SRCOBJ)/xlist.o
-CMDER_OBJS  = $(ESTR_OBJS) $(XLIST_OBJS) $(SRCOBJ)/cmder.o
-
-.PHONY: all test clean
-
-all: cutils estr cmder
-	@:
+CCFLAGS     = -I${INCDIR} -MD -MP
+CCWARNINGS  = -Wall -Wextra# -Wpedantic
+CC          = gcc ${CCFLAGS} ${CCWARNINGS}
 
 .PRECIOUS: %/.sentinel
 %/.sentinel:
 	mkdir -p ${@D}
-	touch $@
-
-$(SRCOBJ)/%.o: $(SRCDIR)/%.c $(SRCOBJ)/.sentinel Makefile
-	$(CC) -c -o $@ $<
-
-$(TESTOBJ)/%.o: $(TESTSDIR)/%.c $(TESTOBJ)/.sentinel $(TESTBIN)/.sentinel Makefile
-	$(CC) -c -o $@ $<
-
-cutils:
-	@:
-
-estr: $(ESTR_OBJS)
-	@:
-
-xlist: $(XLIST_OBJS)
-	@:
-
-cmder: $(CMDER_OBJS)
-	@:
-
-test: cutils.test estr.test xlist.test cmder.test
-	@echo "All test passed"
-
-cutils.test: $(ESTR_OBJS) $(TESTOBJ)/cutils.test.o
-	$(CC) -o $(TESTBIN)/$@ $^
-	$(TESTBIN)/cutils.test && echo "cuilts tests passed"
-
-estr.test: $(ESTR_OBJS) $(TESTOBJ)/estr.test.o
-	$(CC) -o $(TESTBIN)/$@ $^
-	$(TESTBIN)/estr.test && echo "estr tests passed"
-
-xlist.test: $(XLIST_OBJS) $(TESTOBJ)/xlist.test.o
-	$(CC) -o $(TESTBIN)/$@ $^
-	$(TESTBIN)/xlist.test && echo "xlist tests passed"
-
-cmder.test: $(CMDER_OBJS) $(TESTOBJ)/cmder.test.o
-	$(CC) -o $(TESTBIN)/$@ $^
-	$(TESTBIN)/cmder.test && echo "cmder tests passed"
+	@touch $@
 
 clean:
-	rm -rf ./$(OUTDIR)
+	rm -rf ./$(BUILDDIR)
 	@echo "Project cleaned"
 
-#-include $(ESTR_OBJS:.o=.d)
-#-include $(XLIST_OBJS:.o=.d)
-#-include $(CMDER_OBJS:.o=.d)
+COMPONENTS =
+define add_component # {1} - name; {2} - sources
+${1}: $(patsubst %.c,${OBJDIR}/%.o,${2})
+COMPONENTS += ${1}
+COMPONENT_${1}_OBJS = $(patsubst %.c,${OBJDIR}/%.o,${2})
+-include $(patsubst %.c,${OBJDIR}/%.d,${2})
+endef
+
+${OBJDIR}/%.o: ${SRCDIR}/%.c ${OBJDIR}/.sentinel Makefile
+	${CC} -c -o $@ $<
+
+COMPONENTS_TESTS =
+define add_component_test # {1} - component name; {2} - extra dependent sources
+test.${1}: ${1} $(patsubst %.c,${OBJDIR}/%.o,${2}) ${TESTSBIN}/${1}.test
+	./${TESTSBIN}/${1}.test
+	@test $$$$? -eq 0 && echo "\nTest \"${1}\" passed\n"
+COMPONENTS_TESTS += test.${1}
+COMPONENTS_TESTS_${1}_OBJS = $(patsubst %.c,${OBJDIR}/%.o,${2})
+-include ${TESTSBIN}/${1}.d
+endef
+
+${TESTSBIN}/%.test: ${TESTSSRC}/%.test.c ${TESTSBIN}/.sentinel Makefile
+	${CC} -o $@ $< ${COMPONENT_${*}_OBJS} ${COMPONENTS_TESTS_${*}_OBJS}
+
+# COMPONENTS
+
+$(eval $(call add_component,estr,estr.c))
+$(eval $(call add_component,cutils))
+$(eval $(call add_component,xlist,xlist.c))
+$(eval $(call add_component,cmder,estr.c xlist.c cmder.c))
+
+all: ${COMPONENTS}
+
+# TESTS
+
+$(eval $(call add_component_test,cutils,estr.c))
+$(eval $(call add_component_test,estr))
+$(eval $(call add_component_test,xlist))
+$(eval $(call add_component_test,cmder))
+
+test: ${COMPONENTS_TESTS}

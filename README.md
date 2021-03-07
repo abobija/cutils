@@ -16,14 +16,13 @@ make [TARGET] [TARGET...]
 | `all`  | Build all |
 | `test` | Run all tests |
 | `clean` | Clean project |
-| `cutils.test` | Run cutils tests |
+| `test.cutils` | Run cutils tests |
 | `estr`  | Build estr |
-| `estr.test` | Run estr tests |
+| `test.estr` | Run estr tests |
 | `xlist`  | Build xlist |
-| `xlist.test` | Run xlist tests |
+| `test.xlist` | Run xlist tests |
 | `cmder` | Build cmder |
-| `cmder.test` | Run cmder tests |
-
+| `test.cmder` | Run cmder tests |
 
 ## Author
 

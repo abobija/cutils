@@ -10,13 +10,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Test cutils
-        run: make cutils.test
+        run: make test.cutils
       - name: Test estr
-        run: make estr.test
+        run: make test.estr
       - name: Test xlist
-        run: make xlist.test
+        run: make test.xlist
       - name: Test cmder
-        run: make cmder.test
+        run: make test.cmder
       - name: Test all
         run: make test
       - name: Clean
