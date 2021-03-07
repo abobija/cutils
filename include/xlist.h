@@ -20,7 +20,7 @@ typedef struct xlist* xlist_t;
 typedef struct xnode* xnode_t;
 
 /**
- * @brief List node free handler
+ * @brief List node data free handler
  */
 typedef void(*xnode_free_handler_t)(void* data);
 
