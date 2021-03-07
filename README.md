@@ -3,26 +3,29 @@
 
 Set of compact and portable C utilities with the intention of being very fast, efficient and easy to use. Their main purpose is to be used in IoT and embedded systems.
 
-## Targets
+## Components
 
-[Makefile](https://www.gnu.org/software/make/manual/make.html#Overview) system is used for building.
+List of components.
 
-```
-make [TARGET] [TARGET...]
-```
-
-| Target  | Description |
+| Name  | Description |
 | ------------- | ------------- |
-| `all`  | Build all |
-| `test` | Run all tests |
-| `clean` | Clean project |
-| `test.cutils` | Run cutils tests |
-| `estr`  | Build estr |
-| `test.estr` | Run estr tests |
-| `xlist`  | Build xlist |
-| `test.xlist` | Run xlist tests |
-| `cmder` | Build cmder |
-| `test.cmder` | Run cmder tests |
+| `cutils` | Set of handy macros for object constructing, error checking, etc... |
+| `estr` | String extension helpers |
+| `xlist` | Linked list |
+| `cmder` | Commander (wrapper around [getopt](https://www.gnu.org/software/libc/manual/html_node/Getopt.html)) |
+
+## Build
+
+[Make](https://www.gnu.org/software/make/manual/make.html#Overview) is used for controlling compilation process.
+
+| Command  | Description |
+| ------------- | ------------- |
+| `make all` | Build all components |
+| `make` | Same as `make all` |
+| `make COMPONENT` | Build component, where `COMPONENT` is component name |
+| `make test` | Run all tests |
+| `make test.COMPONENT` | Run component test, where `COMPONENT` is component name |
+| `make clean` | Clean the project |
 
 ## Author
 
