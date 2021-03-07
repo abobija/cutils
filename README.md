@@ -11,7 +11,7 @@ List of components.
 | ------------- | ------------- |
 | `cutils` | Set of handy macros for object constructing, error checking, etc... |
 | `estr` | String extension helpers |
-| `xlist` | Linked list |
+| `xlist` | Doubly linked list (DLL) |
 | `cmder` | Commander (wrapper around [getopt](https://www.gnu.org/software/libc/manual/html_node/Getopt.html)) |
 
 ## Build

@@ -1,7 +1,7 @@
 #include "xlist.h"
 
 cu_err_t xlist_create(xlist_config_t* config, xlist_t* list) {
-    if(!list) {
+    if(! list) {
         return CU_ERR_INVALID_ARG;
     }
 
@@ -17,61 +17,50 @@ cu_err_t xlist_create(xlist_config_t* config, xlist_t* list) {
 }
 
 int xlist_size(xlist_t list) {
-    return !list ? CU_FAIL : (int) list->len;
+    return ! list ? CU_FAIL : (int) list->len;
 }
 
-cu_err_t xlist_add_to_back(xlist_t list, void* data, xnode_t* node) {
-    if(!list) {
-        return CU_ERR_INVALID_ARG;
-    }
-
-    xnode_t _node = NULL;
-    cu_mem_checkr(_node = cu_tctor(xnode_t, struct xnode, .data = data));
-    list->len++;
-
-    if(!list->head) {
-        list->head = _node;
-        return CU_OK;
-    }
-
-    xnode_t ptr = list->head;
-    while(ptr->next) { ptr = ptr->next; }
-    ptr->next = _node;
-
-    if(node) { *node = _node; }
-
+#define _xlist_chain_(CHAINER) \
+    if(! list) { \
+        return CU_ERR_INVALID_ARG; \
+    } \
+    xnode_t _node = NULL; \
+    cu_mem_checkr(_node = cu_tctor(xnode_t, struct xnode, .data = data)); \
+    list->len++; \
+    if(! list->head) { \
+        list->head = list->tail = _node; \
+        return CU_OK; \
+    } \
+    {CHAINER} \
+    if(node) { *node = _node; } \
     return CU_OK;
+
+cu_err_t xlist_add_to_back(xlist_t list, void* data, xnode_t* node) {
+    _xlist_chain_({
+        list->tail->next = _node;
+        _node->prev = list->tail;
+        list->tail = _node;
+    });
 }
 
 cu_err_t xlist_add_to_front(xlist_t list, void* data, xnode_t* node) {
-    if(!list) {
-        return CU_ERR_INVALID_ARG;
-    }
-
-    xnode_t _node = NULL;
-    cu_mem_checkr(_node = cu_tctor(xnode_t, struct xnode, .data = data));
-    list->len++;
-
-    if(!list->head) {
+    _xlist_chain_({
+        list->head->prev = _node;
+        _node->next = list->head;
         list->head = _node;
-        return CU_OK;
-    }
-
-    _node->next = list->head;
-    list->head = _node;
-
-    if(node) { *node = _node; }
-
-    return CU_OK;
+    });
 }
 
 cu_err_t xlist_get(xlist_t list, int index, xnode_t* node) {
-    if(!list || !node || index < 0) {
+    if(! list || ! node || index < 0) {
         return CU_ERR_INVALID_ARG;
     }
 
     xnode_t ptr = list->head;
     int i = 0;
+
+    // todo: optimize
+    // if index on the other half: reverse search
 
     while(ptr) {
         if(i++ == index) {
@@ -86,12 +75,15 @@ cu_err_t xlist_get(xlist_t list, int index, xnode_t* node) {
 }
 
 cu_err_t xlist_get_data(xlist_t list, int index, void** data) {
-    if(!list || !data || index < 0) {
+    if(! list || ! data || index < 0) {
         return CU_ERR_INVALID_ARG;
     }
 
     xnode_t ptr = list->head;
     int i = 0;
+
+    // todo: optimize
+    // if index on the other half: reverse search
 
     while(ptr) {
         if(i++ == index) {
@@ -105,84 +97,90 @@ cu_err_t xlist_get_data(xlist_t list, int index, void** data) {
     return CU_ERR_NOT_FOUND;
 }
 
+/**
+ *  @brief Call this function when sure that node belongs to list
+ */
+static void _xlist_popfree(xlist_t list, xnode_t node) {
+    if(node->prev) { node->prev->next = node->next; }
+    else { list->head = node->next; }
+    if(node->next) { node->next->prev = node->prev; }
+    else { list->tail = node->prev; }
+    node->next = node->prev = NULL;
+    if(list->data_free_fnc) { list->data_free_fnc(node->data); }
+    node->data = NULL;
+    free(node);
+    list->len--;
+}
+
 cu_err_t xlist_remove(xlist_t list, xnode_t node) {
-    if(!list || !node) {
+    if(! list || ! node) {
         return CU_ERR_INVALID_ARG;
     }
 
-    if(list->head == NULL) {
+    if(list->len == 0) {
         return CU_ERR_NOT_FOUND;
     }
 
-    xnode_t prev = NULL;
-    xnode_t curr = list->head;
-
-    while(curr) {
-        if(curr == node) {
-            if(prev) { prev->next = curr->next; }
-            else { list->head = curr->next; }
-            curr->next = NULL;
-            if(list->data_free_fnc) { list->data_free_fnc(curr->data); }
-            free(curr);
-            list->len--;
+    xlist_veach(list, {
+        if(xnode == node) {
+            _xlist_popfree(list, xnode);
             return CU_OK;
         }
-
-        prev = curr;
-        curr = curr->next;
-    }
+    });
 
     return CU_ERR_NOT_FOUND;
 }
 
-cu_err_t xlist_remove_data(xlist_t list, void* data) {
-    if(!list) {
+int xlist_remove_data(xlist_t list, void* data) {
+    if(! list) {
         return CU_ERR_INVALID_ARG;
     }
 
-    cu_err_t err = CU_OK;
-    xnode_t ptr = list->head;
     xnode_t next = NULL;
+    int cnt = 0;
 
-    while(ptr) {
-        next = ptr->next;
-
-        if(ptr->data == data) {
-            cu_err_checkr(xlist_remove(list, ptr));
+    xlist_veach(list, {
+        if(data == xnode->data) {
+            next = xnode->next;
+            _xlist_popfree(list, xnode);
+            cnt++;
+            xnode = next;
+            continue;
         }
+    });
 
-        ptr = next;
-    }
-
-    return err;
+    return cnt > 0 ? cnt : CU_ERR_NOT_FOUND;
 }
 
 bool xlist_is_empty(xlist_t list) {
     return ! list ? true : list->len == 0;
 }
 
-cu_err_t xlist_flush(xlist_t list) {
-    if(!list) {
+int xlist_flush(xlist_t list) {
+    if(! list) {
         return CU_ERR_INVALID_ARG;
     }
 
-    cu_err_t err = CU_OK;
+    int cnt = 0;
 
-    while(list->head) {
-        cu_err_checkr(xlist_remove(list, list->head));
+    while(list->len > 0) {
+        _xlist_popfree(list, list->head);
+        cnt++;
     }
 
-    return err;
+    return cnt;
 }
 
 cu_err_t xlist_destroy(xlist_t list) {
-    if(!list) {
+    if(! list) {
         return CU_ERR_INVALID_ARG;
     }
 
-    cu_err_t err = CU_OK;
-    cu_err_checkr(xlist_flush(list));
-    free(list);
+    cu_err_t err;
+    if((err = xlist_flush(list)) < 0) {
+        return err;
+    }
 
-    return err;
+    free(list);
+    return CU_OK;
 }
