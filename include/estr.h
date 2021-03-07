@@ -10,9 +10,9 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-#define CU_ERR_ESTR_BASE                    (2000)
-#define CU_ERR_ESTR_INVALID_WHITESPACE      (CU_ERR_ESTR_BASE + 1)
-#define CU_ERR_ESTR_INVALID_OUT_OF_BOUNDS   (CU_ERR_ESTR_BASE + 1)
+#define CU_ERR_ESTR_BASE                    (-1000)
+#define CU_ERR_ESTR_INVALID_WHITESPACE      (CU_ERR_ESTR_BASE - 1)
+#define CU_ERR_ESTR_INVALID_OUT_OF_BOUNDS   (CU_ERR_ESTR_BASE - 2)
 
 typedef struct {
     bool length;
