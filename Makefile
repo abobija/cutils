@@ -33,19 +33,6 @@ endef
 ${OBJDIR}/%.o: ${SRCDIR}/%.c ${OBJDIR}/.sentinel Makefile
 	${CC} -c -o $@ $<
 
-COMPONENTS_TESTS =
-define add_component_test # {1} - component name; {2} - extra dependent sources
-test.${1}: ${1} $(patsubst %.c,${OBJDIR}/%.o,${2}) ${TESTSBIN}/${1}.test
-	./${TESTSBIN}/${1}.test
-	@test $$$$? -eq 0 && echo "\nTest \"${1}\" passed\n"
-COMPONENTS_TESTS += test.${1}
-COMPONENTS_TESTS_${1}_OBJS = $(patsubst %.c,${OBJDIR}/%.o,${2})
--include ${TESTSBIN}/${1}.d
-endef
-
-${TESTSBIN}/%.test: ${TESTSSRC}/%.test.c ${TESTSBIN}/.sentinel Makefile
-	${CC} -o $@ $< ${COMPONENT_${*}_OBJS} ${COMPONENTS_TESTS_${*}_OBJS}
-
 # COMPONENTS
 
 $(eval $(call add_component,estr,estr.c))
@@ -54,6 +41,20 @@ $(eval $(call add_component,xlist,xlist.c))
 $(eval $(call add_component,cmder,estr.c xlist.c cmder.c))
 
 all: ${COMPONENTS}
+
+COMPONENTS_TESTS =
+define add_component_test # {1} - component name; {2} - extra dependent sources
+test.${1}: ${1} $(patsubst %.c,${OBJDIR}/%.o,${2}) ${TESTSBIN}/${1}.test
+	./${TESTSBIN}/${1}.test
+	@test $$$$? -eq 0 && echo "\nTest \"${1}\" passed\n"
+COMPONENTS_TESTS += test.${1}
+COMPONENTS_TESTS_${1}_OBJS = $(patsubst %.c,${OBJDIR}/%.o,${2})
+${TESTSBIN}/${1}.test: ${COMPONENT_${1}_OBJS} $(patsubst %.c,${OBJDIR}/%.o,${2})
+-include ${TESTSBIN}/${1}.d
+endef
+
+${TESTSBIN}/%.test: ${TESTSSRC}/%.test.c ${TESTSBIN}/.sentinel Makefile
+	${CC} -o $@ $< ${COMPONENT_${*}_OBJS} ${COMPONENTS_TESTS_${*}_OBJS}
 
 # TESTS
 
