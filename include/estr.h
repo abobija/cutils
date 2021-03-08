@@ -16,8 +16,8 @@ extern "C" {
 
 typedef struct {
     bool length;
-    uint minlen;
-    uint maxlen;
+    unsigned int minlen;
+    unsigned int maxlen;
     bool no_whitespace;
 } estr_validation_t;
 
@@ -174,7 +174,7 @@ bool estr_is_empty_ws(const char* str);
  * @param times How much time chr needs to be repeated
  * @return pointer to allocated null-terminated string, or NULL on failure (no memory) or if times == 0
  */
-char* estr_repeat_chr(char chr, uint times);
+char* estr_repeat_chr(char chr, unsigned int times);
 
 /**
  * @brief Check if string contains whitespace

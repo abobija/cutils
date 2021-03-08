@@ -332,7 +332,7 @@ bool estr_is_empty_ws(const char* str) {
     return true;
 }
 
-char* estr_repeat_chr(char chr, uint times) {
+char* estr_repeat_chr(char chr, unsigned int times) {
     if(times == 0) {
         return NULL;
     }
@@ -343,7 +343,7 @@ char* estr_repeat_chr(char chr, uint times) {
         return NULL;
     }
 
-    for(uint i = 0; i < times; i++) {
+    for(unsigned int i = 0; i < times; i++) {
         str[i] = chr;
     }
 
@@ -378,7 +378,7 @@ cu_err_t estr_validate(const char* str, estr_validation_t* validation) {
     }
 
     if(validation->length) {
-        uint len = strlen(str);
+        unsigned int len = strlen(str);
 
         if(validation->minlen > 0 && validation->maxlen == 0) {
             validation->maxlen = validation->minlen;

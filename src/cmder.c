@@ -1,9 +1,12 @@
 #include "cmder.h"
 #include "cutils.h"
 #include "estr.h"
-#include <wordexp.h>
 #include <getopt.h>
 #include <assert.h>
+
+#ifndef _WIN32
+#include <wordexp.h>
+#endif
 
 struct cmder_cmd_handle {
 	char* name;
@@ -28,12 +31,12 @@ typedef enum {
 } cmder_opt_type_t;
 
 typedef struct {
-    cmder_opt_handle_t* flags; /*<! Options */
-    uint16_t flags_len;        /*<! Options length */
-    cmder_opt_handle_t* oargs; /*<! Optional args */
-    uint16_t oargs_len;        /*<! Optional args length */
-    cmder_opt_handle_t* margs; /*<! Mandatory args */
-    uint16_t margs_len;        /*<! Mandatory args length */
+    cmder_opt_handle_t* flags;   /*<! Options */
+    uint16_t flags_len;  /*<! Options length */
+    cmder_opt_handle_t* oargs;   /*<! Optional args */
+    uint16_t oargs_len;  /*<! Optional args length */
+    cmder_opt_handle_t* margs;   /*<! Mandatory args */
+    uint16_t margs_len;  /*<! Mandatory args length */
 } cmder_gopts_t;
 
 static void _opt_free(cmder_opt_handle_t opt) {
@@ -100,7 +103,7 @@ static void _free_gopts(cmder_gopts_t* gopts) {
     free(gopts);
 }
 
-static cu_err_t _validate_name(const char* name, uint maxlen) {
+static cu_err_t _validate_name(const char* name, unsigned int maxlen) {
     return estr_validate(name, &(estr_validation_t) {
         .length = true,
         .minlen = 1,
@@ -203,6 +206,7 @@ cu_err_t cmder_args(const char* cmdline, int* out_argc, char*** out_argv) {
         return CU_ERR_EMPTY_STRING;
     }
 
+#ifndef _WIN32
     wordexp_t wexp;
     int werr;
     if((werr = wordexp(cmdline, &wexp, WRDE_NOCMD)) == 0) {
@@ -215,6 +219,9 @@ cu_err_t cmder_args(const char* cmdline, int* out_argc, char*** out_argv) {
     if(werr == WRDE_NOSPACE) {
         return CU_ERR_NO_MEM;
     }
+#else
+    assert(0); // Not implemented for windows
+#endif
     
     return CU_ERR_SYNTAX_ERROR;
 }
@@ -449,7 +456,7 @@ _return:
  * 
  * @return CU_OK on success
  */
-static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, uint* out_len, cmder_gopts_t** o_gopts, bool gopts_just_lengths) {
+static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, unsigned int* out_len, cmder_gopts_t** o_gopts, bool gopts_just_lengths) {
     if(!cmd || !out_len) {
         return CU_ERR_INVALID_ARG;
     }
@@ -457,13 +464,13 @@ static cu_err_t _calc_signature_len(cmder_cmd_handle_t cmd, uint* out_len, cmder
     *out_len = 0;
 
     cu_err_t err = CU_OK;
-    uint name_len = strlen(cmd->name);
+    unsigned int name_len = strlen(cmd->name);
 
     if(name_len == 0) {
         return CU_ERR_INVALID_ARG;
     }
 
-    uint len = name_len;
+    unsigned int len = name_len;
     cmder_gopts_t* gopts = NULL;
 
     cu_err_check(_cmd_gopts(cmd, &gopts, gopts_just_lengths));
@@ -507,7 +514,7 @@ _return:
  * 
  * @return CU_OK on success
  */
-static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, uint len, cmder_gopts_t* gopts) {
+static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, unsigned int len, cmder_gopts_t* gopts) {
     if(!cmd || !out_signature || len == 0 || !gopts) {
         return CU_ERR_INVALID_ARG;
     }
@@ -521,7 +528,7 @@ static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, 
     cu_mem_check(signature = *out_signature ? *out_signature : malloc(len + 1));
     ptr = signature;
 
-    uint name_len = strlen(cmd->name);
+    unsigned int name_len = strlen(cmd->name);
     memcpy(ptr, cmd->name, name_len);
     ptr += name_len;
     *ptr++ = ' ';
@@ -558,7 +565,7 @@ static cu_err_t _create_signature(cmder_cmd_handle_t cmd, char** out_signature, 
     *--ptr = '\0'; // replace last space
 
     // make sure that ptr is at exact the same place where it should be
-    assert(ptr - signature == len);
+    assert(ptr - signature == (int) len);
 
     goto _return;
 _error:
@@ -570,14 +577,14 @@ _return:
     return err;
 }
 
-cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, uint* out_len) {
+cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, unsigned int* out_len) {
     if(!cmd || !out_signature) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err;
     char* signature = NULL;
-    uint len = 0;
+    unsigned int len = 0;
     cmder_gopts_t* gopts = NULL;
     cu_err_check(_calc_signature_len(cmd, &len, &gopts, false));
 
@@ -596,13 +603,13 @@ _return:
     return err;
 }
 
-static cu_err_t _calc_manual_len(cmder_cmd_handle_t cmd, uint* out_len, uint* out_sig_len, cmder_gopts_t** o_gopts) {
+static cu_err_t _calc_manual_len(cmder_cmd_handle_t cmd, unsigned int* out_len, unsigned int* out_sig_len, cmder_gopts_t** o_gopts) {
     if(!cmd) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err = CU_OK;
-    uint len = 0, sig_len = 0;
+    unsigned int len = 0, sig_len = 0;
     cmder_gopts_t* gopts = NULL;
 
     cu_err_check(_calc_signature_len(cmd, &sig_len, &gopts, false));
@@ -738,7 +745,7 @@ static cu_err_t _create_manual(cmder_cmd_handle_t cmd, char** out_manual, size_t
     *--ptr = '\0'; // replace last [NL]
 
     // make sure that ptr is at exact the same place where it should be
-    assert(ptr - manual == (long int) len);
+    assert(ptr - manual == (int) len);
 
     goto _return;
 _error:
@@ -750,13 +757,13 @@ _return:
     return err;
 }
 
-cu_err_t cmder_cmd_manual(cmder_cmd_handle_t cmd, char** out_manual, uint* out_len) {
+cu_err_t cmder_cmd_manual(cmder_cmd_handle_t cmd, char** out_manual, unsigned int* out_len) {
     if(!cmd || !out_manual) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err;
-    uint len = 0, sig_len = 0;
+    unsigned int len = 0, sig_len = 0;
     cmder_gopts_t* gopts = NULL;
     char* manual = NULL;
 
@@ -797,15 +804,15 @@ cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t**
     return CU_ERR_NOT_FOUND;
 }
 
-cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, uint* out_len) {
+cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, unsigned int* out_len) {
     if(!cmdval || !out_errstr || cmdval->error == CMDER_CMDVAL_NO_ERROR || !cmdval->cmd) {
         return CU_ERR_INVALID_ARG;
     }
 
     cu_err_t err = CU_OK;
     char* errorstr = NULL;
-    uint cmdname_len = strlen(cmdval->cmd->name);
-    uint len = cmdname_len;
+    unsigned int cmdname_len = strlen(cmdval->cmd->name);
+    unsigned int len = cmdname_len;
     len += 2; // ": "
 
     switch (cmdval->error)
@@ -857,7 +864,7 @@ cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, uint* ou
     *ptr = '\0';
 
     // make sure that ptr is at exact the same place where it should be
-    assert(ptr - errorstr == len);
+    assert(ptr - errorstr == (int) len);
 
     goto _return;
 _error:

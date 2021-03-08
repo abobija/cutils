@@ -13,13 +13,25 @@ CCFLAGS     = -I${INCDIR} -MD -MP
 CCWARNINGS  = -Wall -Wextra# -Wpedantic
 CC          = gcc ${CCFLAGS} ${CCWARNINGS}
 
+ifeq ($(OS),Windows_NT)
+    MKDIR = mkdir
+	TOUCH = echo >
+	CHECKPASS = if ERRORLEVEL 0 echo. & echo Test "X" passed & echo.
+	RMDIR = rd /s /q
+else
+    MKDIR = mkdir -p
+	TOUCH = touch
+	CHECKPASS = test $$$$$$$$? -eq 0 && echo "\nTest \"X\" passed\n"
+	RMDIR = rm -rf
+endif
+
 .PRECIOUS: %/.sentinel
 %/.sentinel:
-	mkdir -p ${@D}
-	@touch $@
+	${MKDIR} "${@D}"
+	@${TOUCH} "$@"
 
 clean:
-	rm -rf ./$(BUILDDIR)
+	${RMDIR} "./$(BUILDDIR)"
 	@echo "Project cleaned"
 
 COMPONENTS =
@@ -46,7 +58,7 @@ COMPONENTS_TESTS =
 define add_component_test # {1} - component name; {2} - extra dependent sources
 test.${1}: ${1} $(patsubst %.c,${OBJDIR}/%.o,${2}) ${TESTSBIN}/${1}.test
 	./${TESTSBIN}/${1}.test
-	@test $$$$? -eq 0 && echo "\nTest \"${1}\" passed\n"
+	@$(subst X,${1},${CHECKPASS})
 COMPONENTS_TESTS += test.${1}
 COMPONENTS_TESTS_${1}_OBJS = $(patsubst %.c,${OBJDIR}/%.o,${2})
 ${TESTSBIN}/${1}.test: ${COMPONENT_${1}_OBJS} $(patsubst %.c,${OBJDIR}/%.o,${2})

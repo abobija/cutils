@@ -61,7 +61,7 @@ int xlist_add_to_front(xlist_t list, void* data, xnode_t* node) {
         return CU_ERR_NOT_FOUND;                  \
     }                                             \
     int i;                                        \
-    if((uint) index <= (list->len - 1) / 2) {     \
+    if((unsigned int) index <= (list->len - 1) / 2) {     \
         i = 0;                                    \
         xlist_veach(list, {                       \
             if(i++ == index) {                    \

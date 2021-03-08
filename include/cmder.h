@@ -86,15 +86,15 @@ cu_err_t cmder_add_cmd(cmder_handle_t cmder, cmder_cmd_t* cmd, cmder_cmd_handle_
 cu_err_t cmder_add_vcmd(cmder_handle_t cmder, cmder_cmd_t* cmd);
 cu_err_t cmder_add_opt(cmder_cmd_handle_t cmd, cmder_opt_t* opt, cmder_opt_handle_t* out_opt);
 cu_err_t cmder_add_vopt(cmder_cmd_handle_t cmd, cmder_opt_t* opt);
-cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, uint* out_len);
-cu_err_t cmder_cmd_manual(cmder_cmd_handle_t cmd, char** out_manual, uint* out_len);
+cu_err_t cmder_cmd_signature(cmder_cmd_handle_t cmd, char** out_signature, unsigned int* out_len);
+cu_err_t cmder_cmd_manual(cmder_cmd_handle_t cmd, char** out_manual, unsigned int* out_len);
 cu_err_t cmder_run_args(cmder_handle_t cmder, int argc, char** argv, const void* run_context);
 cu_err_t cmder_vrun_args(cmder_handle_t cmder, int argc, char** argv);
 cu_err_t cmder_run(cmder_handle_t cmder, const char* cmdline, const void* run_context);
 cu_err_t cmder_vrun(cmder_handle_t cmder, const char* cmdline);
 cu_err_t cmder_get_cmd_by_name(cmder_handle_t cmder, const char* cmd_name, cmder_cmd_handle_t* out_cmd_handle);
 cu_err_t cmder_get_optval(cmder_cmdval_t* cmdval, char optname, cmder_optval_t** out_optval);
-cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, uint* out_len);
+cu_err_t cmder_cmdval_errstr(cmder_cmdval_t* cmdval, char** out_errstr, unsigned int* out_len);
 cu_err_t cmder_destroy(cmder_handle_t cmder);
 
 #ifdef __cplusplus

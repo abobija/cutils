@@ -297,7 +297,7 @@ static void test_man() {
     }) == CU_OK);
 
     char* manual = NULL;
-    uint manual_len = 0;
+    unsigned int manual_len = 0;
     assert(cmder_cmd_manual(cmd, &manual, &manual_len) == CU_OK);
     assert(manual);
     assert(manual_len == strlen(manual));
@@ -327,7 +327,7 @@ static void test_signatures() {
     assert(cmd);
 
     char* sig = NULL;
-    uint sig_len;
+    unsigned int sig_len;
     assert(cmder_cmd_signature(cmd, &sig, &sig_len) == CU_OK);
     assert(sig && sig_len == strlen("touch") && estr_eq(sig, "touch"));
     free(sig);
@@ -505,8 +505,8 @@ static void test_args() {
     cu_list_free(argv, argc);
 }
 
-static int _argc;
-static char** _argv;
+static int _argc_;
+static char** _argv_;
 
 void test_args_ptrs_cb(cmder_cmdval_t* cmdval) {
     if(cmdval->error != CMDER_CMDVAL_NO_ERROR) {
@@ -520,16 +520,16 @@ void test_args_ptrs_cb(cmder_cmdval_t* cmdval) {
 
     // it must be the pointer to the same address
     // which means that value is not copied but referenced
-    assert(s->val == _argv[2]);
+    assert(s->val == _argv_[2]);
 }
 
 static void test_args_ptrs() {
-    assert(cmder_args("test -s \"hello world\"", &_argc, &_argv) == CU_OK);
-    assert(_argv);
-    assert(_argc == 3);
-    assert(estr_eq(_argv[0], "test"));
-    assert(estr_eq(_argv[1], "-s"));
-    assert(estr_eq(_argv[2], "hello world"));
+    assert(cmder_args("test -s \"hello world\"", &_argc_, &_argv_) == CU_OK);
+    assert(_argv_);
+    assert(_argc_ == 3);
+    assert(estr_eq(_argv_[0], "test"));
+    assert(estr_eq(_argv_[1], "-s"));
+    assert(estr_eq(_argv_[2], "hello world"));
 
     cmder_handle_t cmder = NULL;
     assert(cmder_create(&(cmder_t){ .name = "cmder" }, &cmder) == CU_OK);
@@ -537,9 +537,9 @@ static void test_args_ptrs() {
     cmder_cmd_handle_t test;
     assert(cmder_add_cmd(cmder, &(cmder_cmd_t){ .name = "test", .callback = &test_args_ptrs_cb }, &test) == CU_OK);
     assert(cmder_add_vopt(test, &(cmder_opt_t) { .name = 's', .is_arg = true, .is_optional = false }) == CU_OK);
-    assert(cmder_vrun_args(cmder, _argc, _argv) == CU_OK);
+    assert(cmder_vrun_args(cmder, _argc_, _argv_) == CU_OK);
 
-    cu_list_free(_argv, _argc);
+    cu_list_free(_argv_, _argc_);
     assert(cmder_destroy(cmder) == CU_OK);
 }
 
@@ -592,7 +592,7 @@ static void error_cb(cmder_cmdval_t* cmdval) {
         }
         
         char* errstr = NULL;
-        uint errstr_len = 0;
+        unsigned int errstr_len = 0;
         assert(cmder_cmdval_errstr(cmdval, &errstr, &errstr_len) == CU_OK);
         assert(errstr);
         assert(errstr_len > 0);

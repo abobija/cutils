@@ -5,12 +5,13 @@
             "label": "C/C++: gcc build active file",
             "command": "gcc",
             "args": [
-                "-g",
-                "${workspaceFolder}/estr.c",
-                "${workspaceFolder}/cmder.c",
+                "-I${workspaceFolder}/include",
+                "${workspaceFolder}/src/estr.c",
+                "${workspaceFolder}/src/xlist.c",
+                "${workspaceFolder}/src/cmder.c",
                 "${file}",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "${workspaceFolder}/build/bin/tests/${fileBasenameNoExtension}"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

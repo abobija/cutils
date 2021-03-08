@@ -33,7 +33,7 @@ struct xnode {
 struct xlist {
     xnode_t head;                            /*<! First node */
     xnode_t tail;                            /*<! Last node */
-    uint len;                                /*<! List size */
+    unsigned int len;                                /*<! List size */
     xnode_free_handler_t data_free_handler;  /*<! Node data free handler */
 };
 
