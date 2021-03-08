@@ -21,7 +21,7 @@ ifeq ($(OS),Windows_NT)
 else
     MKDIR = mkdir -p
 	TOUCH = touch
-	CHECKPASS = test $$$$$$$$? -eq 0 && echo "\nTest \"X\" passed\n"
+	CHECKPASS = test $$$$? -eq 0 && echo "\nTest \"X\" passed\n"
 	RMDIR = rm -rf
 endif
 
