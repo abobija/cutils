@@ -1,6 +1,7 @@
 #include "cmder.h"
 #include "cutils.h"
 #include "estr.h"
+#include <wordexp.h>
 #include <getopt.h>
 #include <assert.h>
 
@@ -191,91 +192,31 @@ cu_err_t cmder_getoopts(cmder_cmd_handle_t cmd, char** out_getoopts) {
     return CU_OK;
 }
 
-#define cmder_argv_iteration(CODE) { \
-    if(*curr == '"' && (! (quote_escaped = (prev && *prev == '\\')))) quoted = !quoted; \
-    else if(!start && (quoted || *curr != ' ')) { \
-        start = curr; \
-    } else if(start && !quoted && *curr == ' ') { \
-        { CODE }; \
-        start = NULL; \
-    } \
-    prev = curr++; \
-}
-
-#define cmder_argv_post_iteration_pickup(CODE) {\
-    if(start) { \
-        { CODE }; \
-        start = NULL; \
-    } \
-}
-
-#define cmder_argv_iteration_handler() { \
-    end = *prev == '"' && !quote_escaped ? prev : curr; \
-    cu_mem_check(argv[i] = strndup(start, end - start)); \
-    if(strstr(argv[i], "\\\"")) { \
-        cu_mem_check(_tmp = estr_rep(argv[i], "\\\"", "\"")); \
-        free(argv[i]); \
-        argv[i] = _tmp; \
-    } \
-    i++; \
-}
-
 cu_err_t cmder_args(const char* cmdline, int* out_argc, char*** out_argv) {
     if(!cmdline || !out_argc || !out_argv) {
         return CU_ERR_INVALID_ARG;
     }
 
-    char** argv = NULL;
     size_t cmdline_len = strlen(cmdline);
 
     if(cmdline_len <= 0) {
         return CU_ERR_EMPTY_STRING;
     }
 
-    char* curr = (char*) cmdline;
-    char* prev = NULL;
-    char* start = NULL;
-    bool quoted = false;
-    bool quote_escaped = false;
-    int len = 0;
+    wordexp_t wexp;
+    int werr;
+    if((werr = wordexp(cmdline, &wexp, WRDE_NOCMD)) == 0) {
+        *out_argc = wexp.we_wordc;
+        *out_argv = wexp.we_wordv;
 
-    while(*curr) cmder_argv_iteration({ len++; });
-
-    if(quoted) { // last quote not closed
-        return CU_ERR_SYNTAX_ERROR;
+        return CU_OK;
     }
 
-    cmder_argv_post_iteration_pickup({ len++; });
-
-    if(len <= 0 || quoted) {
-        return CU_FAIL;
+    if(werr == WRDE_NOSPACE) {
+        return CU_ERR_NO_MEM;
     }
-
-    curr = (char*) cmdline;
-    prev = start = NULL;
-    quoted = quote_escaped = false;
-    char* end = NULL;
-    int i = 0;
-
-    cu_err_t err = CU_OK;
-    cu_mem_check(argv = malloc(len * sizeof(char*)));
-
-    char* _tmp = NULL;
-    while(*curr) cmder_argv_iteration({
-        cmder_argv_iteration_handler();
-    });
-
-    cmder_argv_post_iteration_pickup({
-        cmder_argv_iteration_handler();
-    });
     
-    goto _return;
-_error:
-    cu_list_free(argv, len); // this will, as well, set argv to NULL and len to zero
-_return:
-    *out_argc = len;
-    *out_argv = argv;
-    return err;
+    return CU_ERR_SYNTAX_ERROR;
 }
 
 static cu_err_t _getoopts_recalc(cmder_cmd_handle_t cmd) {

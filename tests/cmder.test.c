@@ -429,7 +429,26 @@ static void test_args() {
     cu_list_free(argv, argc);
 
     assert(cmder_args("ab \"", &argc, &argv) == CU_ERR_SYNTAX_ERROR);
-    assert(!argv && argc == 0);
+
+    assert(cmder_args("\"ab\\\"c\" \"\\\\\" d", &argc, &argv) == CU_OK);
+    assert(argc == 3);
+    assert(argv && estr_eq(argv[0], "ab\"c") && estr_eq(argv[1], "\\") && 
+        estr_eq(argv[2], "d"));
+    cu_list_free(argv, argc);
+
+    assert(cmder_args("a\\\\\\\\b d\"e f\"g h", &argc, &argv) == CU_OK);
+    assert(argc == 3);
+    assert(argv && estr_eq(argv[0], "a\\\\b") && estr_eq(argv[1], "de fg") && 
+        estr_eq(argv[2], "h"));
+    cu_list_free(argv, argc);
+
+    assert(cmder_args("a\\\\\\\"b c d", &argc, &argv) == CU_OK);
+    assert(argc == 3);
+    assert(argv && estr_eq(argv[0], "a\\\"b") && estr_eq(argv[1], "c") && 
+        estr_eq(argv[2], "d"));
+    cu_list_free(argv, argc);
+
+    assert(cmder_args("a\"b\"\" c d", &argc, &argv) == CU_ERR_SYNTAX_ERROR);
 
     assert(cmder_args("test a b c", &argc, &argv) == CU_OK);
     assert(argc == 4);
@@ -442,9 +461,9 @@ static void test_args() {
         estr_eq(argv[2], "c d") && estr_eq(argv[3], "e"));
     cu_list_free(argv, argc);
     assert(cmder_args("test a \"b c\"    \"\"   d", &argc, &argv) == CU_OK);
-    assert(argc == 4);
+    assert(argc == 5);
     assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
-        estr_eq(argv[2], "b c") && estr_eq(argv[3], "d"));
+        estr_eq(argv[2], "b c") && estr_eq(argv[3], "")  && estr_eq(argv[4], "d"));
     cu_list_free(argv, argc);
     assert(cmder_args("  \" a   b c \"  d e \"f\" ", &argc, &argv) == CU_OK);
     assert(argc == 4);
@@ -452,19 +471,25 @@ static void test_args() {
         estr_eq(argv[1], "d") && estr_eq(argv[2], "e") && estr_eq(argv[3], "f"));
     cu_list_free(argv, argc);
     assert(cmder_args("test a \"b c\"    \"\"   d \"\"", &argc, &argv) == CU_OK);
-    assert(argc == 4);
+    assert(argc == 6);
     assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
-        estr_eq(argv[2], "b c") && estr_eq(argv[3], "d"));
+        estr_eq(argv[2], "b c") &&
+        estr_eq(argv[3], "") &&
+        estr_eq(argv[4], "d") &&
+        estr_eq(argv[5], "")
+        );
     cu_list_free(argv, argc);
     assert(cmder_args("test a \"b c\"    \"\"   d \"x\"", &argc, &argv) == CU_OK);
-    assert(argc == 5);
+    assert(argc == 6);
     assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
-        estr_eq(argv[2], "b c") && estr_eq(argv[3], "d") && estr_eq(argv[4], "x"));
+        estr_eq(argv[2], "b c") &&
+        estr_eq(argv[3], "") &&
+        estr_eq(argv[4], "d") && estr_eq(argv[5], "x"));
     cu_list_free(argv, argc);
     assert(cmder_args("\"\"   test a \"b c\"    \"\"   \"d\"  ", &argc, &argv) == CU_OK);
-    assert(argc == 4);
-    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
-        estr_eq(argv[2], "b c") && estr_eq(argv[3], "d"));
+    assert(argc == 6);
+    assert(argv && estr_eq(argv[0], "") && estr_eq(argv[1], "test") && estr_eq(argv[2], "a") && 
+        estr_eq(argv[3], "b c") && estr_eq(argv[4], "") && estr_eq(argv[5], "d"));
     cu_list_free(argv, argc);
     assert(cmder_args("a \"b \\\"c\\\" d\"", &argc, &argv) == CU_OK); // a "b \"c\" d"
     assert(argc == 2);

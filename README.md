@@ -12,7 +12,7 @@ List of components.
 | `cutils` | Set of handy macros for object constructing, error checking, etc... |
 | `estr` | String extension helpers |
 | `xlist` | Doubly linked list (DLL) |
-| `cmder` | Commander (wrapper around [getopt](https://www.gnu.org/software/libc/manual/html_node/Getopt.html)) |
+| `cmder` | Commander (wrapper around [wordexp](https://man7.org/linux/man-pages/man3/wordexp.3.html) and [getopt](https://man7.org/linux/man-pages/man3/getopt.3.html)) |
 
 ## Build
 
