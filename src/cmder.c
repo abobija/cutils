@@ -31,12 +31,12 @@ typedef enum {
 } cmder_opt_type_t;
 
 typedef struct {
-    cmder_opt_handle_t* flags;   /*<! Options */
-    uint16_t flags_len;  /*<! Options length */
-    cmder_opt_handle_t* oargs;   /*<! Optional args */
-    uint16_t oargs_len;  /*<! Optional args length */
-    cmder_opt_handle_t* margs;   /*<! Mandatory args */
-    uint16_t margs_len;  /*<! Mandatory args length */
+    cmder_opt_handle_t* flags;  /*<! Options */
+    uint16_t flags_len;         /*<! Options length */
+    cmder_opt_handle_t* oargs;  /*<! Optional args */
+    uint16_t oargs_len;         /*<! Optional args length */
+    cmder_opt_handle_t* margs;  /*<! Mandatory args */
+    uint16_t margs_len;         /*<! Mandatory args length */
 } cmder_gopts_t;
 
 static void _opt_free(cmder_opt_handle_t opt) {
