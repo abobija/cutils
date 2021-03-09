@@ -7,16 +7,16 @@ Set of compact and portable C utilities with the intention of being very fast, e
 
 List of components.
 
-| Name  | Description |
-| ------------- | ------------- |
-| `cutils` | Set of handy macros for object constructing, error checking, etc... |
-| `estr` | String extension helpers |
-| `xlist` | Doubly linked list (DLL) |
-| `cmder` | Commander (wrapper around [wordexp](https://man7.org/linux/man-pages/man3/wordexp.3.html) and [getopt](https://man7.org/linux/man-pages/man3/getopt.3.html)) |
+| Name  | Description | Linux | Windows |
+| ------------- | ------------- | ------------- | ------------- |
+| `cutils` | Set of handy macros for object constructing, error checking, etc... | Yes | Yes |
+| `estr` | String extension helpers | Yes | Yes |
+| `xlist` | Doubly linked list (DLL) | Yes | Yes |
+| `cmder` | Commander (wrapper around [getopt](https://man7.org/linux/man-pages/man3/getopt.3.html) and: [wordexp](https://man7.org/linux/man-pages/man3/wordexp.3.html) on Linux; [CommandLineToArgvW](https://docs.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-commandlinetoargvw) on Windows) | Yes | Yes
 
 ## Build
 
-[Make](https://www.gnu.org/software/make/manual/make.html#Overview) is used for controlling compilation process.
+[Make](https://www.gnu.org/software/make/manual/make.html#Overview) is used for controlling compilation process. Building supported on Linux and Windows (not tested on other platforms).
 
 | Command  | Description |
 | ------------- | ------------- |
