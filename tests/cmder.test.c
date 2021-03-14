@@ -72,7 +72,6 @@ void ok_cb(cmder_cmdval_t* cmdval) {
 void null_cb(cmder_cmdval_t* cmdval) { (void)(cmdval); /* noop */ }
 
 static void test_getoopts(cmder_handle_t cmder);
-static void test_args();
 static void test_args_ptrs();
 static void test_error_callback();
 static void test_run_raw_args();
@@ -81,7 +80,6 @@ static void test_with_no_prefix();
 static void test_man();
 
 int main() {
-    test_args();
     test_man();
     test_with_no_prefix();
     test_signatures();
@@ -412,137 +410,6 @@ static void test_getoopts(cmder_handle_t cmder) {
     assert(cmder_getoopts(cmplx, &tmp) == CU_OK);
     assert(estr_eq(tmp, ":ab:c:de:f:gh"));
     free(tmp);
-}
-
-static void test_args() {
-    int argc;
-    char** argv;
-
-    assert(cmder_args("test a b c", &argc, &argv) == CU_OK);
-    assert(argc == 4);
-    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
-        estr_eq(argv[2], "b") && estr_eq(argv[3], "c"));
-    cu_list_free(argv, argc);
-
-    assert(cmder_args(NULL, &argc, &argv) == CU_ERR_INVALID_ARG);
-    assert(cmder_args("a b", NULL, &argv) == CU_ERR_INVALID_ARG);
-    assert(cmder_args("a b", &argc, NULL) == CU_ERR_INVALID_ARG);
-    assert(cmder_args("", &argc, &argv) == CU_ERR_EMPTY_STRING);
-
-    assert(cmder_args("a", &argc, &argv) == CU_OK);
-    assert(argc == 1);
-    assert(argv && estr_eq(argv[0], "a"));
-    cu_list_free(argv, argc);
-
-#ifdef _WIN32
-    assert(cmder_args("ab \"", &argc, &argv) == CU_OK);
-    assert(argc == 2);
-    assert(argv && estr_eq(argv[0], "ab") && estr_eq(argv[1], ""));
-    cu_list_free(argv, argc);
-#else
-    assert(cmder_args("ab \"", &argc, &argv) == CU_ERR_SYNTAX_ERROR);
-#endif
-
-    assert(cmder_args("\"ab\\\"c\" \"\\\\\" d", &argc, &argv) == CU_OK);
-#ifdef _WIN32
-    assert(argc == 2);
-    assert(argv && estr_eq(argv[0], "ab\\") && estr_eq(argv[1], "c \\ d"));
-#else
-    assert(argc == 3);
-    assert(argv && estr_eq(argv[0], "ab\"c") && estr_eq(argv[1], "\\") && 
-        estr_eq(argv[2], "d"));
-#endif
-    cu_list_free(argv, argc);
-
-    assert(cmder_args("a\\\\\\\\b d\"e f\"g h", &argc, &argv) == CU_OK);
-    assert(argc == 3);
-#ifdef _WIN32
-    assert(argv && estr_eq(argv[0], "a\\\\\\\\b") && estr_eq(argv[1], "de fg") && 
-        estr_eq(argv[2], "h"));
-#else
-    assert(argv && estr_eq(argv[0], "a\\\\b") && estr_eq(argv[1], "de fg") && 
-        estr_eq(argv[2], "h"));
-#endif
-    cu_list_free(argv, argc);
-
-    assert(cmder_args("a\\\\\\\"b c d", &argc, &argv) == CU_OK);
-    assert(argc == 3);
-#ifdef _WIN32
-    assert(argv && estr_eq(argv[0], "a\\\\\\\"b") && estr_eq(argv[1], "c") && 
-        estr_eq(argv[2], "d"));
-#else
-    assert(argv && estr_eq(argv[0], "a\\\"b") && estr_eq(argv[1], "c") && 
-        estr_eq(argv[2], "d"));
-#endif
-    cu_list_free(argv, argc);
-
-#ifdef _WIN32
-    assert(cmder_args("a\"b\"\" c d", &argc, &argv) == CU_OK);
-    assert(argc == 3);
-    assert(argv && estr_eq(argv[0], "a\"b\"\"") && estr_eq(argv[1], "c") && 
-        estr_eq(argv[2], "d"));
-#else
-    assert(cmder_args("a\"b\"\" c d", &argc, &argv) == CU_ERR_SYNTAX_ERROR);
-#endif
-
-    assert(cmder_args("test ab \"c d\" e", &argc, &argv) == CU_OK);
-    assert(argc == 4);
-    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "ab") &&
-        estr_eq(argv[2], "c d") && estr_eq(argv[3], "e"));
-    cu_list_free(argv, argc);
-    assert(cmder_args("test a \"b c\"    \"\"   d", &argc, &argv) == CU_OK);
-    assert(argc == 5);
-    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
-        estr_eq(argv[2], "b c") && estr_eq(argv[3], "")  && estr_eq(argv[4], "d"));
-    cu_list_free(argv, argc);
-    assert(cmder_args("  \" a   b c \"  d e \"f\" ", &argc, &argv) == CU_OK);
-#ifdef _WIN32
-    assert(argc == 5);
-    assert(argv && estr_eq(argv[0], "") && estr_eq(argv[1], " a   b c ") && 
-        estr_eq(argv[2], "d") && estr_eq(argv[3], "e") && estr_eq(argv[4], "f"));
-#else
-    assert(argc == 4);
-    assert(argv && estr_eq(argv[0], " a   b c ") && 
-        estr_eq(argv[1], "d") && estr_eq(argv[2], "e") && estr_eq(argv[3], "f"));
-#endif
-    cu_list_free(argv, argc);
-    assert(cmder_args("test a \"b c\"    \"\"   d \"\"", &argc, &argv) == CU_OK);
-    assert(argc == 6);
-    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
-        estr_eq(argv[2], "b c") &&
-        estr_eq(argv[3], "") &&
-        estr_eq(argv[4], "d") &&
-        estr_eq(argv[5], "")
-        );
-    cu_list_free(argv, argc);
-    assert(cmder_args("test a \"b c\"    \"\"   d \"x\"", &argc, &argv) == CU_OK);
-    assert(argc == 6);
-    assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
-        estr_eq(argv[2], "b c") &&
-        estr_eq(argv[3], "") &&
-        estr_eq(argv[4], "d") && estr_eq(argv[5], "x"));
-    cu_list_free(argv, argc);
-    assert(cmder_args("\"\"   test a \"b c\"    \"\"   \"d\"  ", &argc, &argv) == CU_OK);
-    assert(argc == 6);
-    assert(argv && estr_eq(argv[0], "") && estr_eq(argv[1], "test") && estr_eq(argv[2], "a") && 
-        estr_eq(argv[3], "b c") && estr_eq(argv[4], "") && estr_eq(argv[5], "d"));
-    cu_list_free(argv, argc);
-    assert(cmder_args("a \"b \\\"c\\\" d\"", &argc, &argv) == CU_OK); // a "b \"c\" d"
-    assert(argc == 2);
-    assert(argv && estr_eq(argv[0], "a") && estr_eq(argv[1], "b \"c\" d"));
-    cu_list_free(argv, argc);
-    assert(cmder_args("a \\\"c\\\"", &argc, &argv) == CU_OK); // a \"c\"
-    assert(argc == 2);
-    assert(argv && estr_eq(argv[0], "a") && estr_eq(argv[1], "\"c\""));
-    cu_list_free(argv, argc);
-    assert(cmder_args("\\\"a\\\" b", &argc, &argv) == CU_OK); // \"a\" b
-    assert(argc == 2);
-#ifdef _WIN32
-    assert(argv && estr_eq(argv[0], "\\\"a\\\"") && estr_eq(argv[1], "b"));
-#else
-    assert(argv && estr_eq(argv[0], "\"a\"") && estr_eq(argv[1], "b"));
-#endif
-    cu_list_free(argv, argc);
 }
 
 static int _argc_;

@@ -50,7 +50,8 @@ ${OBJDIR}/%.o: ${SRCDIR}/%.c ${OBJDIR}/.sentinel Makefile
 $(eval $(call add_component,estr,estr.c))
 $(eval $(call add_component,cutils))
 $(eval $(call add_component,xlist,xlist.c))
-$(eval $(call add_component,cmder,estr.c xlist.c cmder.c))
+$(eval $(call add_component,wxp,estr.c wxp.c))
+$(eval $(call add_component,cmder,estr.c xlist.c wxp.c cmder.c))
 
 all: ${COMPONENTS}
 
@@ -73,6 +74,7 @@ ${TESTSBIN}/%.test: ${TESTSSRC}/%.test.c ${TESTSBIN}/.sentinel Makefile
 $(eval $(call add_component_test,cutils,estr.c))
 $(eval $(call add_component_test,estr))
 $(eval $(call add_component_test,xlist))
+$(eval $(call add_component_test,wxp))
 $(eval $(call add_component_test,cmder))
 
 test: ${COMPONENTS_TESTS}

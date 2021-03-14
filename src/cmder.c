@@ -1,17 +1,9 @@
 #include "cmder.h"
 #include "cutils.h"
 #include "estr.h"
+#include "wxp.h"
 #include <getopt.h>
 #include <assert.h>
-
-#include <stdio.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#include <shellapi.h>
-#else
-#include <wordexp.h>
-#endif
 
 struct cmder_cmd_handle {
 	char* name;
@@ -211,67 +203,16 @@ cu_err_t cmder_args(const char* cmdline, int* out_argc, char*** out_argv) {
         return CU_ERR_EMPTY_STRING;
     }
 
-#ifdef _WIN32
-    cu_err_t err = CU_OK;
+    cu_err_t err;
     char** argv = NULL;
     int argc;
-    LPWSTR* wargv = NULL;
-    WCHAR* wcmd = NULL;
-    size_t wncnt, wn;
 
-    // const char* -> WCHAR*
-    cu_err_negative_check(wncnt = mbstowcs(NULL, cmdline, 0));
-    cu_mem_check(wcmd = calloc(wncnt + 1, sizeof(WCHAR)));
-    cu_err_negative_check(wn = mbstowcs(wcmd, cmdline, wncnt));
-
-    wargv = CommandLineToArgvW(wcmd, &argc);
-
-    free(wcmd);
-    wcmd = NULL;
-
-    if(!wargv) { // error
-        //DWORD err = GetLastError();
-        err = CU_FAIL;
-        goto _error;
+    if((err = wxp(cmdline, &argc, &argv)) == CU_OK) {
+        *out_argc = argc;
+        *out_argv = argv;
     }
-
-    // LPWSTR* -> char**
-    cu_mem_check(argv = calloc(argc, sizeof(char*)));
-
-    for(int i = 0; i < argc; i++) {
-        size_t wlen = wcslen(wargv[i]);
-        cu_mem_check(argv[i] = calloc(wlen + 1, sizeof(char)));
-        cu_err_negative_check(wcstombs(argv[i], wargv[i], wlen));
-    }
-
-    *out_argc = argc;
-    *out_argv = argv;
-
-    err = CU_OK;
-    goto _return;
-_error:
-    cu_list_free(argv, argc);
-_return:
-    free(wcmd);
-    if(wargv) { LocalFree(wargv); }
 
     return err;
-#else
-    wordexp_t wexp;
-    int werr;
-    if((werr = wordexp(cmdline, &wexp, WRDE_NOCMD)) == 0) {
-        *out_argc = wexp.we_wordc;
-        *out_argv = wexp.we_wordv;
-
-        return CU_OK;
-    }
-
-    if(werr == WRDE_NOSPACE) {
-        return CU_ERR_NO_MEM;
-    }
-
-    return CU_ERR_SYNTAX_ERROR;
-#endif
 }
 
 static cu_err_t _getoopts_recalc(cmder_cmd_handle_t cmd) {
