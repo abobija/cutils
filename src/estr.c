@@ -4,6 +4,23 @@
 #include <stdarg.h>
 #include <ctype.h>
 
+#ifdef _WIN32
+char* strndup(const char* string, size_t len) {
+    char *buffer;
+    size_t n = 0;
+
+    for (; n < len && string[n] != '\0'; n++);
+
+    buffer = malloc(len + 1);
+    if (buffer != NULL) {
+        memcpy(buffer, string, n);
+        buffer[n] = '\0';
+    }
+
+    return buffer;
+}
+#endif
+
 bool estr_eq(const char* str1, const char* str2) {
     if(!str1 || !str2)
         return false;
