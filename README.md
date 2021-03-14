@@ -12,7 +12,7 @@ List of components.
 | `cutils` | Set of handy macros for object constructing, error checking, etc... | Yes | Yes |
 | `estr` | String extension helpers | Yes | Yes |
 | `xlist` | Doubly linked list (DLL) | Yes | Yes |
-| `wxp` | Shell-like string expander | Yes | Yes |
+| `wxp` | String expander (similar to [wordexp](https://man7.org/linux/man-pages/man3/wordexp.3.html)) | Yes | Yes |
 | `cmder` | Commander (wrapper around [getopt](https://man7.org/linux/man-pages/man3/getopt.3.html)) | Yes | Yes
 
 ## Build

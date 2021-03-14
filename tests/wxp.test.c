@@ -7,17 +7,17 @@
 int main() {
     char** argv = NULL;
     int argc;
+    
+    assert(wxp(NULL, &argc, &argv) == CU_ERR_INVALID_ARG);
+    assert(wxp("a b", NULL, &argv) == CU_ERR_INVALID_ARG);
+    assert(wxp("a b", &argc, NULL) == CU_ERR_INVALID_ARG);
+    assert(wxp("", &argc, &argv) == CU_ERR_EMPTY_STRING);
 
     assert(wxp("test a b c", &argc, &argv) == CU_OK);
     assert(argc == 4);
     assert(argv && estr_eq(argv[0], "test") && estr_eq(argv[1], "a") && 
         estr_eq(argv[2], "b") && estr_eq(argv[3], "c"));
     cu_list_free(argv, argc);
-
-    assert(wxp(NULL, &argc, &argv) == CU_ERR_INVALID_ARG);
-    assert(wxp("a b", NULL, &argv) == CU_ERR_INVALID_ARG);
-    assert(wxp("a b", &argc, NULL) == CU_ERR_INVALID_ARG);
-    assert(wxp("", &argc, &argv) == CU_ERR_EMPTY_STRING);
 
     assert(wxp("a", &argc, &argv) == CU_OK);
     assert(argc == 1);
@@ -32,9 +32,11 @@ int main() {
     cu_list_free(argv, argc);
 
     assert(wxp("a\\\\\\\\b d\"e f\"g h", &argc, &argv) == CU_OK);
-    assert(argc == 3);
-    assert(argv && estr_eq(argv[0], "a\\\\b") && estr_eq(argv[1], "de fg") && 
-        estr_eq(argv[2], "h"));
+    assert(argc == 5);
+    assert(argv && estr_eq(argv[0], "a\\\\b") && estr_eq(argv[1], "d") && 
+        estr_eq(argv[2], "e f") &&
+        estr_eq(argv[3], "g") && 
+        estr_eq(argv[4], "h"));
     cu_list_free(argv, argc);
 
     assert(wxp("a\\\\\\\"b c d", &argc, &argv) == CU_OK);
@@ -44,6 +46,7 @@ int main() {
     cu_list_free(argv, argc);
 
     assert(wxp("a\"b\"\" c d", &argc, &argv) == CU_ERR_SYNTAX_ERROR);
+    assert(wxp("a b\"", &argc, &argv) == CU_ERR_SYNTAX_ERROR);
 
     assert(wxp("test ab \"c d\" e", &argc, &argv) == CU_OK);
     assert(argc == 4);
@@ -92,6 +95,11 @@ int main() {
     assert(wxp("\\\"a\\\" b", &argc, &argv) == CU_OK); // \"a\" b
     assert(argc == 2);
     assert(argv && estr_eq(argv[0], "\"a\"") && estr_eq(argv[1], "b"));
+    cu_list_free(argv, argc);
+
+    assert(wxp("a \"\\\"b\\\"\"", &argc, &argv) == CU_OK);
+    assert(argc == 2);
+    assert(argv && estr_eq(argv[0], "a") && estr_eq(argv[1], "\"b\""));
     cu_list_free(argv, argc);
 
     return 0;
